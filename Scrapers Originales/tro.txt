@@ -1,0 +1,44 @@
+Scraper: tro.py
+Sitio objetivo: casas.trovit.com.mx (listado de viviendas en DF)
+Estado actual: Implementación incompleta / esqueleto de prueba.
+URL base patrón: https://casas.trovit.com.mx/index.php/cod.search_homes/.../page.{n}
+
+Funciones principales:
+- paginate(): Recorre páginas hasta que no haya resultados; actualmente rompe tras primera iteración.
+- scrape(content): Genera BeautifulSoup, guarda HTML en 'data/trovit.html', busca elementos con clase 'item mx js-item js-backToTrovit' pero solo imprime el primero y no extrae campos, retornando lista vacía.
+- save(depts): Diseñado para guardar variables 'name' y 'location' como índice en CSV 'trovit.csv' (separador '~'), pero no se utiliza porque scrape retorna vacío.
+
+Variables previstas (no implementadas):
+- name: Título del anuncio.
+- location: Ubicación.
+- (posibles) precio, habitaciones, baños, superficie, url, agencia: No implementadas pero típicas de otros scrapers.
+
+Listado actual (no implementado efectivamente):
+1. name - (faltaría selector dentro de cada div.item mx js-item js-backToTrovit)
+2. location - (faltaría selector)
+3. precio - (faltaría selector)
+4. habitaciones - (faltaría selector)
+5. baños - (faltaría selector)
+6. superficie - (faltaría selector)
+7. url - (faltaría obtener href de un <a>)
+
+Nota: scrape() solo guarda HTML en trovit.html y muestra el primer elemento.
+
+Paginación / Recorrido (esqueleto actual):
+Función paginate():
+pg_nums = 1
+while True:
+	r = requests.get(_base_url.format(pg_nums))
+	depts = scrape(r.content)
+	if not depts: break ("No more departments")
+	pg_nums += 1
+Se fuerza salida temprana por 'break ###'.
+Ejemplos de URLs esperados:
+1. https://casas.trovit.com.mx/index.php/.../page.1
+2. https://casas.trovit.com.mx/index.php/.../page.2
+N. https://casas.trovit.com.mx/index.php/.../page.N
+
+Notas:
+- Falta importar módulos usados en save(): 'os' y 'datetime as dt'.
+- El flujo actual no produce datos ni CSV.
+- Requiere desarrollo adicional para estar alineado con los otros scrapers.

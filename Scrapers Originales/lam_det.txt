@@ -1,0 +1,64 @@
+Scraper: lam_det.py
+Sitio objetivo: lamudi.com.mx (detalle de propiedades - departamentos en Zapopan)
+Fuente de URLs: CSV 'data/tratada/lamudi-departamento-zapopan-venta.csv'
+
+Variables extraídas:
+Información básica:
+- nombre: Título principal del anuncio (h1 dentro de div.main-title).
+- ubicacion: Texto de localización (div.view-map__text).
+- descripcion: Descripción larga del inmueble (div#description-text) con espacios normalizados.
+- precio: Precio principal (div.prices-and-fees__price).
+
+Place details / atributos principales:
+- habitaciones: Número de recámaras (div[data-test=bedrooms-value]).
+- baños: Número de baños completos (div[data-test=full-bathrooms-value]).
+- medios_baños: Número de medios baños (div[data-test=half-bathrooms-value]).
+- metros_cuadrados: Área / superficie listada (div[data-test=area-value]).
+
+Place features (características estructurales):
+- tipo_vivienda: Tipo de propiedad (span[data-test=property-type-value]).
+- tipo_operacion: Operación (venta/renta) (span[data-test=operation-type-value]).
+- año_construccion: Año de construcción (span[data-test=construction-year-value]).
+- estado: Estado / condición (span[data-test=condition-value]).
+- planta: Piso / planta (span[data-test=floor-value]).
+- superficie_construida: Superficie construida (span[data-test=floor-area-value]).
+
+Metadatos:
+- fecha_publicacion: Texto con fecha y entidad que publica (div.date).
+
+Facilidades / amenities:
+- facilidades_propiedad: Lista combinada de amenidades propias del inmueble (div.facilities cuyo título contiene 'propiedad').
+- facilidades_edificio: Lista de amenidades del edificio / condominio (título contiene 'edificio').
+
+Notas:
+- Las listas de facilidades se concatenan con '; '.
+- No se parsean valores numéricos; todo se guarda como texto.
+- Se guarda en CSV diario 'lamudi_detalle.csv'.
+
+Listado variable -> selector / expresión:
+1. nombre - title_div = soup.find("div", class_="main-title"); title_div.find("h1")
+2. ubicacion - soup.find("div", class_="view-map__text")
+3. descripcion - soup.find("div", id="description-text")
+4. precio - soup.find("div", class_="prices-and-fees__price")
+5. habitaciones - soup.find("div", attrs={"data-test": "bedrooms-value"})
+6. baños - soup.find("div", attrs={"data-test": "full-bathrooms-value"})
+7. medios_baños - soup.find("div", attrs={"data-test": "half-bathrooms-value"})
+8. metros_cuadrados - soup.find("div", attrs={"data-test": "area-value"})
+9. tipo_vivienda - soup.find("span", attrs={"data-test": "property-type-value"})
+10. tipo_operacion - soup.find("span", attrs={"data-test": "operation-type-value"})
+11. año_construccion - soup.find("span", attrs={"data-test": "construction-year-value"})
+12. estado - soup.find("span", attrs={"data-test": "condition-value"})
+13. planta - soup.find("span", attrs={"data-test": "floor-value"})
+14. superficie_construida - soup.find("span", attrs={"data-test": "floor-area-value"})
+15. fecha_publicacion - soup.find("div", class_="date")
+16. facilidades_propiedad - div.facilities cuyo título contiene 'propiedad' -> lis/ul/li/span
+17. facilidades_edificio - div.facilities cuyo título contiene 'edificio' -> lis/ul/li/span
+
+Recorrido de URLs (detalle, sin paginación directa):
+Fuente previa: CSV data/tratada/lamudi-departamento-zapopan-venta.csv (columna 'url').
+Procedimiento:
+1. urls_df = pd.read_csv(...); urls = urls_df['url'].tolist()
+2. for i, URL in enumerate(urls, start=1): abrir cada detalle con driver.get()
+3. Espera explícita: presencia de 'div.main-title h1'
+4. Extrae HTML y llama scrape_property_detail()
+No hay incremento de page param, depende del dataset inicial exportado del listado.

@@ -98,52 +98,92 @@ def scrape_property_detail(driver, html):
 
     return data
 
-def save(data_dict):
-    today_str = dt.date.today().isoformat()
-    out_dir = os.path.join(DDIR, today_str)
-    os.makedirs(out_dir, exist_ok=True)
-    fname = os.path.join(out_dir, "lamudi_detalle.csv")
-
+def save_detail_row(data_dict, output_file):
+    """Guarda o acumula una fila de detalle en el archivo final indicado por el adapter.
+    Normaliza saltos de línea y concatena.
+    """
     df_new = pd.DataFrame([data_dict])
-    try:
-        df_existing = pd.read_csv(fname, encoding="utf-8")
-    except FileNotFoundError:
-        df_existing = pd.DataFrame()
-
-    final_df = pd.concat([df_existing, df_new], ignore_index=True)
+    if os.path.exists(output_file):
+        try:
+            df_existing = pd.read_csv(output_file, encoding='utf-8')
+        except Exception:
+            df_existing = pd.DataFrame()
+        final_df = pd.concat([df_existing, df_new], ignore_index=True)
+    else:
+        final_df = df_new
     final_df = final_df.replace(r'[\r\n]+', ' ', regex=True)
-    final_df.to_csv(fname, index=False, encoding="utf-8")
-    print(f"Datos guardados en: {fname}")
+    final_df.to_csv(output_file, index=False, encoding='utf-8')
+    print(f"[lam_det] Fila detalle agregada -> {output_file}")
+
+def resolve_url_list_file():
+    # Prioridad 1: variable de entorno inyectada por adapter
+    env_file = os.environ.get('SCRAPER_URL_LIST_FILE')
+    if env_file and os.path.exists(env_file):
+        return env_file
+    # Fallback: buscar patrón *_URL_* en el mismo directorio del archivo de salida
+    out = os.environ.get('SCRAPER_OUTPUT_FILE')
+    if out:
+        parent = os.path.dirname(out)
+        website = os.environ.get('SCRAPER_WEBSITE', 'Lam')
+        pattern_prefix = f"{website}URL_"
+        for f in os.listdir(parent):
+            if f.startswith(pattern_prefix) and f.endswith('.csv'):
+                return os.path.join(parent, f)
+    return None
 
 def main():
-    urls_df = pd.read_csv("data/tratada/lamudi-departamento-zapopan-venta.csv")
-    urls = urls_df["url"].tolist()
+    output_file = os.environ.get('SCRAPER_OUTPUT_FILE')
+    url_list_file = resolve_url_list_file()
+    if not url_list_file:
+        print("[lam_det] No se encontró archivo de URLs. Saliendo con éxito suave.")
+        if output_file and not os.path.exists(output_file):
+            pd.DataFrame([{'status': 'no_url_file'}]).to_csv(output_file, index=False)
+        return True
+
+    print(f"[lam_det] Usando archivo de URLs: {url_list_file}")
+    try:
+        urls_df = pd.read_csv(url_list_file, encoding='utf-8')
+    except Exception as e:
+        print(f"[lam_det] Error leyendo URL file: {e}")
+        return False
+
+    url_col = 'listing_url' if 'listing_url' in urls_df.columns else ('url' if 'url' in urls_df.columns else None)
+    if not url_col:
+        print("[lam_det] Archivo de URLs no tiene columna válida (listing_url/url)")
+        return False
+
+    urls = urls_df[url_col].dropna().unique().tolist()
+    if not urls:
+        print("[lam_det] Lista de URLs vacía")
+        return True
 
     options = Options()
-    # options.add_argument("--headless")  # Descomentar para modo headless
-    options.add_argument("--no-sandbox")
-    options.add_argument("--disable-dev-shm-usage")
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
 
     for i, URL in enumerate(urls, start=1):
-        print(f"Iteración {i} de {len(urls)}: {URL}")
-        print(f"\nNavegando a: {URL}")
+        print(f"[lam_det] {i}/{len(urls)} -> {URL}")
         driver = webdriver.Chrome(options=options)
         driver.set_page_load_timeout(60)
         try:
             driver.get(URL)
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "div.main-title h1"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'div.main-title h1'))
             )
-            time.sleep(2)  # Pausa adicional para asegurar que la página cargue por completo
-
+            time.sleep(2)
             html = driver.page_source
             data = scrape_property_detail(driver, html)
-            save(data)
+            data['source_url'] = URL
+            if output_file:
+                save_detail_row(data, output_file)
         except Exception as e:
-            print(f"Error al procesar {URL}: {e}")
+            print(f"[lam_det] Error en URL {URL}: {e}")
         finally:
             driver.quit()
-        time.sleep(2)
+        time.sleep(1.5)
+
+    return True
 
 if __name__ == "__main__":
     main()

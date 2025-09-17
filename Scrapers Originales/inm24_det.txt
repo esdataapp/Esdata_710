@@ -1,0 +1,73 @@
+Scraper: inm24_det.py
+Sitio objetivo: inmuebles24.com (detalle de anuncios de terrenos en Guadalajara)
+Fuente de URLs: CSV 'data/2025-04-25/inmuebles24-guadalajara-terrenos-venta.csv' (columna url)
+
+Variables extraídas (detalle):
+- tipo_propiedad: Tipo de inmueble (ej: Terreno, Departamento, Casa) extraído del encabezado h2.
+- area_m2: Área (texto crudo, puede incluir unidad 'm²').
+- recamaras: Número de recámaras (si aplica) parseado buscando dígitos en token correspondiente.
+- estacionamientos: Número de estacionamientos (si aplica).
+- operacion: Tipo de operación detectada en contenedor de precio ('venta' o 'renta').
+- precio: Valor del precio principal (texto tal cual, puede incluir moneda).
+- mantenimiento: Cuota de mantenimiento o gastos (si se muestra).
+- direccion: Dirección mostrada en la sección de ubicación.
+- ubicacion_url: URL de la imagen del mapa estático (si existe) para posible geolocalización.
+- titulo: Título principal del anuncio (h1).
+- descripcion: Descripción larga completa (texto unificado sin saltos de línea).
+- anunciante: Nombre del anunciante (agencia o propietario) h3 con data-qa linkMicrositioAnunciante.
+- codigo_anunciante: Código interno del anunciante (si presente en la sección de códigos).
+- codigo_inmuebles24: Código asignado por Inmuebles24.
+- tiempo_publicacion: Texto relativo al tiempo de publicación / vistas (div id=user-views).
+
+Variables de iconos (ul#section-icon-features-property):
+- area_total: Texto asociado al icono de superficie total.
+- area_cubierta: Superficie construida / cubierta.
+- banos_icon: Número de baños (versión iconográfica).
+- estacionamientos_icon: Número de estacionamientos (versión iconográfica).
+- recamaras_icon: Número de recámaras (versión iconográfica).
+- medio_banos_icon: Número de medios baños.
+- antiguedad_icon: Antigüedad del inmueble.
+
+Variables dinámicas (botones en #reactGeneralFeatures):
+- Cada botón dentro del contenedor genera claves adicionales cuyo nombre es el texto del botón y el valor es una lista (join con '; ') de características (amenidades, servicios, entorno, etc.). Ejemplos posibles: 'Características Generales', 'Servicios', 'Amenidades'.
+
+Notas:
+- El script imprime cada variable para debugging y agrega retrasos cortos.
+- Se hace un scroll y click programático para extraer contenido dinámico de los botones.
+- Resultados se guardan en CSV 'inmuebles24_terrenos_guadalajara_detalle.csv' dentro de carpeta diaria.
+- Reemplaza saltos de línea por espacios antes de guardar.
+
+Listado variable -> selector / expresión:
+1. tipo_propiedad - h2 = soup.find("h2", class_="title-type-sup-property"); tokens[0]
+2. area_m2 - tokens[1] del mismo h2 separado por '·'
+3. recamaras - tokens[2] parseado con re.search(r"(\d+)")
+4. estacionamientos - tokens[3] parseado con re.search(r"(\d+)")
+5. operacion - price_value_div = price_container.find("div", class_="price-value"); texto contiene 'venta' o 'renta'
+6. precio - span_precio = price_value_div.find("span"); span_precio.get_text()
+7. mantenimiento - extra_div = price_container.find("div", class_="price-extra"); span.price-expenses
+8. direccion - location_div = soup.find("div", class_="section-location-property"); h4.get_text()
+9. ubicacion_url - map_container = soup.find("div", class_="static-map-container"); img#static-map.get('src')
+10. titulo - h1 = soup.find("h1", class_="title-property")
+11. descripcion - desc_section = soup.find("section", class_="article-section-description"); div#longDescription.get_text()
+12. anunciante - soup.find("h3", attrs={"data-qa": "linkMicrositioAnunciante"})
+13. codigo_anunciante - section#reactPublisherCodes li que contiene 'Cód. del anunciante'
+14. codigo_inmuebles24 - section#reactPublisherCodes li que contiene 'Cód. Inmuebles24'
+15. tiempo_publicacion - div#user-views p
+16. area_total - ul#section-icon-features-property li i.icon-stotal
+17. area_cubierta - i.icon-scubierta
+18. banos_icon - i.icon-bano
+19. estacionamientos_icon - i.icon-cochera
+20. recamaras_icon - i.icon-dormitorio
+21. medio_banos_icon - i.icon-toilete
+22. antiguedad_icon - i.icon-antiguedad
+23+. (dinámicas) Botones dentro de div#reactGeneralFeatures -> cada button span.text; detalles en div secundario (.//div[2]) spans listados
+
+Recorrido de URLs (no paginación directa):
+Fuente: CSV data/2025-04-25/inmuebles24-guadalajara-terrenos-venta.csv (columna 'url').
+Proceso:
+1. Cargar lista completa: urls_df = pd.read_csv(...); urls = urls_df["url"].tolist()
+2. Enumerar: for i, URL in enumerate(urls, start=1):
+3. Filtro: if "clasificado" not in URL: continue (omite URLs no detalladas)
+4. Para cada URL: abrir con driver.get(URL), esperar h2.title-type-sup-property
+5. Extraer HTML, parsear detalles y luego features dinámicos con clicks.
+No hay parámetro de página; la iteración depende estrictamente del dataset previo.

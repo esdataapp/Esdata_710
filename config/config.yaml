@@ -29,6 +29,8 @@ execution:
   rate_limit_delay_seconds: 2  # Más rápido en Linux
   max_retry_attempts: 3
   enable_auto_recovery: true
+  single_url_task_per_scraper: true  # Limitar a 1 URL base por scraper; el scraper pagina internamente
+  include_scrapers: ["inm24", "lam", "cyt", "mit"]
   
 # Configuración de monitoreo
 monitoring:
@@ -44,7 +46,7 @@ websites:
     base_url: "https://inmuebles24.com"
     rate_limit_seconds: 3
     user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    max_pages_per_session: 100
+    max_pages_per_session: 30
     
   CyT:
     priority: 2
@@ -52,7 +54,7 @@ websites:
     base_url: "https://casasyterrenos.com"
     rate_limit_seconds: 2
     user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    max_pages_per_session: 150
+    max_pages_per_session: 30
     
   Lam:
     priority: 3
@@ -60,7 +62,7 @@ websites:
     base_url: "https://lamudi.com.mx"
     rate_limit_seconds: 2
     user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    max_pages_per_session: 120
+    max_pages_per_session: 30
     
   Mit:
     priority: 4
@@ -68,7 +70,7 @@ websites:
     base_url: "https://mitula.com.mx"
     rate_limit_seconds: 1
     user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    max_pages_per_session: 80
+    max_pages_per_session: 30
     
   Prop:
     priority: 5
@@ -76,7 +78,7 @@ websites:
     base_url: "https://propiedades.com"
     rate_limit_seconds: 2
     user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    max_pages_per_session: 100
+    max_pages_per_session: 30
     
   Tro:
     priority: 6
@@ -84,7 +86,7 @@ websites:
     base_url: "https://trovit.com.mx"
     rate_limit_seconds: 1
     user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    max_pages_per_session: 90
+    max_pages_per_session: 30
 
 # Configuración de ciudades
 cities:
@@ -160,6 +162,19 @@ security:
   rotate_user_agents: true
   use_proxy_rotation: false
   max_requests_per_minute: 30  # Más agresivo en Linux
+
+# Configuración de almacenamiento SQL heterogéneo
+data_storage:
+  enable_sql_ingest: true              # Ingerir automáticamente cada CSV exitoso a SQLite
+  table_prefix: "data_"               # Prefijo de tablas por scraper (data_cyt, data_inm24, etc.)
+  normalize_column_names: true         # Normalizar nombres de columnas (lowercase, underscores)
+  add_missing_columns: true            # ALTER TABLE para columnas nuevas detectadas
+  chunk_size: 1000                     # Tamaño de lote para inserts masivos
+  track_ingested_files: true           # Registrar archivos ingeridos y evitar duplicados
+  skip_if_exists: true                 # Omitir archivo si ya está registrado
+  store_metadata: true                 # Guardar definición de columnas JSON por scraper
+  enforce_primary_key: false           # (Futuro) Intentar definir clave primaria si se detecta id estable
+  date_detection: false                # (Futuro) Intentar castear a DATE/TIMESTAMP
   
 # Configuración de logging
 logging:

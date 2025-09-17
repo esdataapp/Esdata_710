@@ -13,6 +13,7 @@
 - [Instalación](#-instalación)
 - [Configuración](#️-configuración)
 - [Uso](#-uso)
+ - [Almacenamiento de Datos SQL](#-almacenamiento-de-datos-sql)
 - [Monitoreo](#-monitoreo)
 - [API y CLI](#-api-y-cli)
 - [Desarrollo](#-desarrollo)
@@ -403,6 +404,9 @@ python3 orchestrator.py setup
 
 # Test básico del sistema
 python3 orchestrator.py test
+
+# Ingerir todos los CSV existentes (históricos) a tablas SQL
+python3 orchestrator.py ingest-existing
 ```
 
 #### **Monitor CLI**
@@ -484,6 +488,148 @@ xdg-open data
 ```
 
 ## 📊 Monitoreo
+
+## 🗄️ Almacenamiento de Datos SQL
+
+Cada scraper produce un CSV con columnas propias (heterogéneas). No se fuerza un esquema unificado en una sola tabla; en su lugar:
+
+### Estrategia
+- Una tabla por scraper: `data_<scraper>` (configurable con `data_storage.table_prefix`).
+- Columnas se crean dinámicamente en la primera ingestión.
+- Si en ejecuciones futuras aparecen nuevas columnas, se añaden con `ALTER TABLE` (si `add_missing_columns: true`).
+- Los tipos se almacenan inicialmente como `TEXT` para flexibilidad (futura detección opcional de tipos).
+- Se registra cada archivo ingerido para evitar duplicados (`ingested_files`).
+- Se mantiene metadata de columnas por scraper en `scraper_metadata` (JSON simple).
+
+### Tablas Nuevas
+```sql
+CREATE TABLE ingested_files (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scraper_name TEXT NOT NULL,
+  website TEXT,
+  source_file TEXT NOT NULL,
+  table_name TEXT NOT NULL,
+  rows_ingested INTEGER,
+  ingested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  batch_id TEXT,
+  UNIQUE(scraper_name, source_file)
+);
+
+CREATE TABLE scraper_metadata (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  scraper_name TEXT NOT NULL UNIQUE,
+  table_name TEXT NOT NULL,
+  columns_json TEXT NOT NULL,
+  last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### Configuración (`config/config.yaml`)
+```yaml
+data_storage:
+  enable_sql_ingest: true
+  table_prefix: "data_"
+  normalize_column_names: true
+  add_missing_columns: true
+  chunk_size: 1000
+  track_ingested_files: true
+  skip_if_exists: true
+  store_metadata: true
+  enforce_primary_key: false
+  date_detection: false
+```
+
+### Flujo Automático
+1. Scraper termina con éxito → se llama a `store_scraper_output`.
+2. Se lee el CSV, normaliza columnas (lowercase, underscores, sin espacios).
+3. Se crea la tabla si no existe (`data_<scraper>`).
+4. Se agregan columnas nuevas detectadas.
+5. Se insertan filas en chunks (`chunk_size`).
+6. Se actualiza metadata (`scraper_metadata`).
+7. Se marca archivo como ingerido (`ingested_files`).
+
+### Reingestión Manual de Históricos
+```bash
+python3 orchestrator.py ingest-existing
+```
+Este comando recorre `data/` y trata de inferir el `scraper_name` del nombre del archivo (prefijo antes del primer `_`). Útil tras activar la función de ingestión por primera vez.
+
+### Consultas Rápidas
+```sql
+-- Ver tablas de datos
+.tables data_
+
+-- Últimos archivos ingeridos
+SELECT scraper_name, source_file, rows_ingested, ingested_at FROM ingested_files ORDER BY ingested_at DESC LIMIT 20;
+
+-- Columnas registradas para un scraper
+SELECT columns_json FROM scraper_metadata WHERE scraper_name='cyt';
+```
+
+### Buenas Prácticas
+- Mantén los CSV como fuente de verdad histórica (no borrar inmediatamente).
+- Para análisis cruzado crea vistas materializadas posteriores con un subconjunto común de campos.
+- Si un scraper empieza a producir IDs estables, puede activarse en el futuro `enforce_primary_key` para añadir índices.
+
+### Próximas Extensiones (Roadmap)
+- Detección de tipos (enteros, fechas) y migración suave.
+- Índices configurables por scraper (ej. `precio`, `ciudad`).
+- Compresión automática de CSV tras ingestión exitosa.
+
+Si necesitas normalización unificada (wide table) se puede diseñar un ETL secundario sin tocar la ingestión bruta.
+
+### 🔄 Ejemplo Pipeline Dual (Inm24)
+
+1. Fase URL (scraper `inm24.py` en modo URL):
+  - El orquestador ejecuta `inm24` y crea un archivo con patrón: `Inm24URL_<Ciudad>_<Operacion>_<Producto>_<MesAño>_<Exec>.csv`.
+  - Columnas mínimas: `source_scraper,website,city,operation,product,listing_url,collected_at`.
+2. Fase Detalle (scraper `inm24_det.py`):
+  - Generado dinámicamente solo si el sitio tiene `has_detail_scraper: true`.
+  - El adapter inyecta `SCRAPER_URL_LIST_FILE` apuntando al archivo *_URL_*.
+  - `inm24_det.py` lee `listing_url` y produce archivo final `Inm24_<Ciudad>_<Operacion>_<Producto>_<MesAño>_<Exec>.csv` enriquecido.
+3. Ingestión SQL:
+  - Ambos archivos (URL y detalle) pueden ingerirse: se crean tablas `data_inm24` (para detalle) y también se puede crear `data_inm24url` si se desea separar (actualmente se usa misma convención por scraper principal; para diferenciar podría añadirse un postfijo futuro).
+4. Requisitos de robustez:
+  - Si falta el archivo *_URL_* el orquestador marca la tarea detalle como FAILED antes de ejecutar.
+  - `inm24_det.py` crea placeholder si no encuentra lista (salida suave controlada).
+
+Variables de entorno relevantes (inyectadas):
+```
+SCRAPER_MODE=url|detail
+SCRAPER_OUTPUT_FILE=/ruta/al/archivo/final.csv
+SCRAPER_WEBSITE=Inm24
+SCRAPER_CITY=Gdl
+SCRAPER_OPERATION=Ven
+SCRAPER_PRODUCT=Dep
+SCRAPER_BATCH_ID=Sep25_01
+SCRAPER_URL_LIST_FILE=/ruta/al/archivo/Inm24URL_Gdl_Ven_Dep_Sep25_01.csv (solo en modo detalle)
+```
+
+Esto facilita extender a `Lam` repitiendo el mismo patrón sin reescribir orquestación.
+
+### 📥 Fuente de Tareas: Archivos *_urls.csv
+
+Cada archivo `<scraper>_urls.csv` en la carpeta `urls/` define explícitamente las combinaciones a ejecutar:
+
+Columnas requeridas:
+```
+PaginaWeb,Ciudad,Operacion,ProductoPaginaWeb,URL
+```
+Ejemplo (`inm24_urls.csv`):
+```
+PaginaWeb,Ciudad,Operacion,ProductoPaginaWeb,URL
+Inm24,Gdl,Ven,Dep,https://www.inmuebles24.com/departamentos-en-venta-en-pagina-1.html
+Inm24,Zap,Ven,Dep,https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-1.html
+```
+
+Para cada fila el orquestador crea una tarea y pasa la columna `URL` al adaptador como `SCRAPER_INPUT_URL`. El scraper en modo URL genera el archivo *_URL_* aplicando paginación incremental: reemplaza `pagina-<n>` o añade sufijos si corresponde, deteniéndose cuando no aparecen nuevos enlaces.
+
+Beneficios de este modelo:
+- Control explícito de combinaciones (evita lógica harcodeada dentro del scraper).
+- Fácil activar/desactivar ciudades modificando un CSV.
+- Escalable a más productos/operaciones sin cambiar código.
+
+Si en un futuro se requiere parametrizar el número máximo de páginas por fila, se puede añadir una columna opcional `MaxPaginas` y el adaptador podría exponerla como variable de entorno adicional.
 
 ### 🎯 **Dashboard en Tiempo Real**
 

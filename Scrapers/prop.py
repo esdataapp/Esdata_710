@@ -1,109 +1,199 @@
-#!/usr/bin/env python3
+"""prop.py - Scraper Propiedades.com (modo armonizado URL)
+
+Refactor:
+  - Modo URL (SCRAPER_MODE=url) produce CSV normalizado con columnas estándar.
+  - Modo legacy/debug guarda HTML y primeras coincidencias para inspección.
+Columnas estándar: source_scraper, website, city, operation, product, listing_url, collected_at
 """
-Module to scrape Segunda Mano DF appartments
-and stores data in local storage as CSV.
-"""
-import requests
+from __future__ import annotations
+import os
+import re
+import time
+import datetime as dt
 import pandas as pd
-from pprint import pprint as pp
+import requests
 from bs4 import BeautifulSoup
 
-# Vars
-_base_url = "https://propiedades.com/df/departamentos?pagina={}"
-user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.62 Safari/537.36"
-ddir='data/'
+DDIR = 'data/'
+USER_AGENT = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+HEADERS = {"User-Agent": USER_AGENT}
 
-def save(depts):
-    """ Append page data
+def resolve_base_url(scraper_name: str = 'prop') -> str | None:
+    env_url = os.environ.get('SCRAPER_INPUT_URL')
+    if env_url:
+        return env_url
+    base_dir = os.environ.get('SCRAPER_BASE_DIR') or os.getcwd()
+    candidates = [
+        os.path.join(base_dir, 'urls', f'{scraper_name}_urls.csv'),
+        os.path.join(base_dir, 'Urls', f'{scraper_name}_urls.csv'),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                df = pd.read_csv(path)
+                w = os.environ.get('SCRAPER_WEBSITE', '')
+                c = os.environ.get('SCRAPER_CITY', '')
+                o = os.environ.get('SCRAPER_OPERATION', '')
+                p = os.environ.get('SCRAPER_PRODUCT', '')
+                mask = (
+                    (df['PaginaWeb'].astype(str) == w) &
+                    (df['Ciudad'].astype(str) == c) &
+                    (df['Operacion'].astype(str) == o) &
+                    (df['ProductoPaginaWeb'].astype(str) == p)
+                )
+                row = df[mask].head(1)
+                if not row.empty:
+                    return str(row.iloc[0]['URL'])
+                if len(df) > 0:
+                    return str(df.iloc[0]['URL'])
+            except Exception as e:
+                print(f"[prop] No se pudo leer CSV de URLs ({path}): {e}")
+                continue
+    return None
 
-        Params:
-        -----
-        depts : list
-            List of Departments
-    """
-    # Read Existant file to append
-    _fname = ddir+"{}/propiedades.csv".format(dt.date.today().isoformat())
+def build_page_url(base_url: str, page: int) -> str:
+    # Patrón '?pagina=N' o añadirlo
+    if 'pagina=' in base_url:
+        return re.sub(r'pagina=\d+', f'pagina={page}', base_url)
+    sep = '&' if '?' in base_url else '?'
+    return f"{base_url}{sep}pagina={page}"
+
+def parse_listing_urls(html: str) -> list[str]:
+    soup = BeautifulSoup(html, 'html.parser')
+    urls = []
+    # Heurística: enlaces con '/inmueble/' o '/propiedad/'
+    for a in soup.find_all('a', href=True):
+        href = a['href']
+        if any(k in href for k in ['/inmueble/', '/propiedad/', '/departamento-']):
+            if href.startswith('/'):
+                href_full = 'https://propiedades.com' + href
+            elif href.startswith('http'):
+                href_full = href
+            else:
+                continue
+            urls.append(href_full)
+    # Dedupe preserving order
+    seen = set()
+    out = []
+    for u in urls:
+        if u not in seen:
+            seen.add(u)
+            out.append(u)
+    return out
+
+def fetch_page(url: str) -> str | None:
     try:
-        df = pd.read_csv(_fname, delimiter='~')
-    except:
-        print('New file, creating folder..')
-        try:
-            os.mkdir(ddir+'{}'.format(dt.date.today().isoformat()))
-            print('Created folder!')
-        except:
-            print('Folder exists already!')
-        df = pd.DataFrame()
-    # Append data
-    depdf = pd.DataFrame(depts)
-    print(depdf.head(1).to_dict())
-    try:
-        if df.empty:
-            depdf.set_index(['name','location']).to_csv(_fname, sep='~')
-            print('Correctly saved file: {}'.format(_fname))
-        else:
-            df = pd.concat([df, depdf])
-            df.set_index(['name','location']).to_csv(_fname, sep='~')
-            print('Correctly saved file: {}'.format(_fname))
+        r = requests.get(url, headers=HEADERS, timeout=30)
+        if r.status_code != 200:
+            print(f"[prop] Status {r.status_code} en {url}")
+            return None
+        return r.text
     except Exception as e:
-        print(e)
-        print('Could not save file: {}'.format(_fname))
+        print(f"[prop] Error solicitando {url}: {e}")
+        return None
 
-
-def scrape(content):
-    """ Scrape all departments per page
-    """
-    data = []
-    # Generate soup
-    soup = BeautifulSoup(content, 'html.parser')
-    with open(ddir+'propiedades.html', 'w') as _F:
-        _F.write(soup.prettify())
-    # Get Characteristics
-    for d in soup.find_all(class_="ad"):
-        print('----')
-        try:
-            print(d) 
-        except Exception as e:
-            print(e)
+def url_mode_collect():
+    base_url = resolve_base_url('prop')
+    output_file = os.environ.get('SCRAPER_OUTPUT_FILE')
+    if not base_url or not output_file:
+        print('[prop:url-mode] Faltan SCRAPER_INPUT_URL o SCRAPER_OUTPUT_FILE')
+        return False
+    meta = {
+        'source_scraper': 'prop',
+        'website': os.environ.get('SCRAPER_WEBSITE', 'Prop'),
+        'city': os.environ.get('SCRAPER_CITY', ''),
+        'operation': os.environ.get('SCRAPER_OPERATION', ''),
+        'product': os.environ.get('SCRAPER_PRODUCT', ''),
+        'batch_id': os.environ.get('SCRAPER_BATCH_ID', '')
+    }
+    try:
+        max_pages = int(os.environ.get('SCRAPER_MAX_PAGES', '120'))
+    except Exception:
+        max_pages = 120
+    aggregated = []
+    seen = set()
+    consecutive_empty = 0
+    for page in range(1, max_pages + 1):
+        page_url = build_page_url(base_url, page)
+        print(f"[prop:url-mode] Página {page}: {page_url}")
+        html = fetch_page(page_url)
+        if not html:
+            consecutive_empty += 1
+            if consecutive_empty >= 2:
+                print('[prop:url-mode] 2 páginas sin contenido; fin.')
+                break
             continue
-        break
-    print('Found {} depts'.format(len(data)))
-    return data
-
-def paginate():
-    """ Loop over pages to retrieve all info available
-
-        Returns:
-        -----
-        pg_nums : int
-            Number of pages scraped
-    """
-    pg_nums = 1
-    while True:
-        try:
-            print(_base_url.format(pg_nums))
-            r = requests.get(_base_url.format(pg_nums),
-                headers={'user-agent': user_agent})
-            if r.status_code != 200:
-                raise Exception("Wrong Response")
-            depts = scrape(r.content)
-            if not depts:
-                raise Exception("No more departments")
-        except Exception as e:
-            print(e)
-            print('Finishing to retrieve info.')
+        urls = parse_listing_urls(html)
+        now_iso = dt.datetime.utcnow().isoformat()
+        new_count = 0
+        for u in urls:
+            if u not in seen:
+                seen.add(u)
+                aggregated.append({
+                    'source_scraper': meta['source_scraper'],
+                    'website': meta['website'],
+                    'city': meta['city'],
+                    'operation': meta['operation'],
+                    'product': meta['product'],
+                    'listing_url': u,
+                    'collected_at': now_iso
+                })
+                new_count += 1
+        print(f"[prop:url-mode] Nuevos enlaces página {page}: {new_count}")
+        if new_count == 0:
+            consecutive_empty += 1
+        else:
+            consecutive_empty = 0
+        if consecutive_empty >= 2:
+            print('[prop:url-mode] 2 páginas consecutivas sin nuevos enlaces; fin.')
             break
-        # Store values
-        #save(depts)
-        pg_nums += 1
-        break ###
-    return pg_nums
+        time.sleep(1.5)
+
+    if not aggregated:
+        print('[prop:url-mode] Sin URLs recolectadas')
+        # Ensure directory exists
+        try:
+            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        except Exception:
+            pass
+        pd.DataFrame(columns=['source_scraper','website','city','operation','product','listing_url','collected_at']).to_csv(output_file, index=False)
+        return True
+    out_df = pd.DataFrame(aggregated)
+    # Ensure directory exists for non-empty write
+    try:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    except Exception:
+        pass
+    if os.path.exists(output_file):
+        try:
+            prev = pd.read_csv(output_file)
+            out_df = pd.concat([prev, out_df], ignore_index=True)
+        except Exception:
+            pass
+    out_df.drop_duplicates(subset=['listing_url'], inplace=True)
+    out_df.to_csv(output_file, index=False, encoding='utf-8')
+    print(f"[prop:url-mode] Archivo URLs actualizado: {output_file} ({len(out_df)} filas)")
+    return True
+
+def legacy_debug():
+    print('[prop] Modo legacy/debug')
+    test_url = os.environ.get('SCRAPER_INPUT_URL') or 'https://propiedades.com/df/departamentos?pagina=1'
+    html = fetch_page(test_url)
+    if not html:
+        return False
+    os.makedirs(DDIR, exist_ok=True)
+    with open(os.path.join(DDIR,'prop_debug.html'),'w',encoding='utf-8') as f:
+        f.write(html)
+    urls = parse_listing_urls(html)
+    pd.DataFrame({'listing_url': urls}).to_csv(os.path.join(DDIR,'prop_debug_urls.csv'), index=False)
+    print(f"[prop:legacy] Debug guardado ({len(urls)} urls)")
+    return True
 
 def main():
-    """ Main method
-    """
-    print('Starting to scrape Inmuebles24')
-    pages = paginate()
-
+    mode = os.environ.get('SCRAPER_MODE','url')
+    if mode == 'url':
+        return url_mode_collect()
+    return legacy_debug()
 
 if __name__ == '__main__':
     main()

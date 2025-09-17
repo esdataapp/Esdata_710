@@ -1,109 +1,234 @@
-#!/usr/bin/env python3
+"""tro.py - Scraper Trovit (modo armonizado URL)
+
+Este refactor implementa el patrón armonizado de 'colector de URLs' utilizado por el orquestador.
+Comportamiento:
+  - Si SCRAPER_MODE=url => genera/actualiza un CSV normalizado con columnas estándar.
+  - (Legacy simplificado) Si no está en modo URL, intenta una sola página y guarda estructura mínima.
+
+Columnas estándar de salida (modo URL):
+  source_scraper, website, city, operation, product, listing_url, collected_at
+
+Variables inyectadas por adapter/orchestrator:
+  SCRAPER_MODE, SCRAPER_OUTPUT_FILE, SCRAPER_INPUT_URL, SCRAPER_WEBSITE,
+  SCRAPER_CITY, SCRAPER_OPERATION, SCRAPER_PRODUCT, SCRAPER_BATCH_ID
 """
-Module to scrape Segunda Mano DF appartments
-and stores data in local storage as CSV.
-"""
-import requests
+
+from __future__ import annotations
+import os
+import re
+import time
+import datetime as dt
 import pandas as pd
-from pprint import pprint as pp
+import requests
 from bs4 import BeautifulSoup
 
-# Vars
-_base_url = "https://casas.trovit.com.mx/index.php/cod.search_homes/type.1/what_d.Mexico/rooms_min.0/bathrooms_min.0/city.DF/order_by.relevance/resultsPerPage.25/isUserSearch.1/page.{}"
-user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.62 Safari/537.36"
-ddir='data/'
+USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/118.0.0.0 Safari/537.36"
+)
+HEADERS = {"User-Agent": USER_AGENT}
 
-def save(depts):
-    """ Append page data
+DDIR = 'data/'  # puede ser sobrescrito por adapter si se usa legacy
+def resolve_base_url(scraper_name: str = 'tro') -> str | None:
+    env_url = os.environ.get('SCRAPER_INPUT_URL')
+    if env_url:
+        return env_url
+    base_dir = os.environ.get('SCRAPER_BASE_DIR') or os.getcwd()
+    candidates = [
+        os.path.join(base_dir, 'urls', f'{scraper_name}_urls.csv'),
+        os.path.join(base_dir, 'Urls', f'{scraper_name}_urls.csv'),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                df = pd.read_csv(path)
+                w = os.environ.get('SCRAPER_WEBSITE', '')
+                c = os.environ.get('SCRAPER_CITY', '')
+                o = os.environ.get('SCRAPER_OPERATION', '')
+                p = os.environ.get('SCRAPER_PRODUCT', '')
+                mask = (
+                    (df['PaginaWeb'].astype(str) == w) &
+                    (df['Ciudad'].astype(str) == c) &
+                    (df['Operacion'].astype(str) == o) &
+                    (df['ProductoPaginaWeb'].astype(str) == p)
+                )
+                row = df[mask].head(1)
+                if not row.empty:
+                    return str(row.iloc[0]['URL'])
+                if len(df) > 0:
+                    return str(df.iloc[0]['URL'])
+            except Exception as e:
+                print(f"[tro] No se pudo leer CSV de URLs ({path}): {e}")
+                continue
+    return None
 
-        Params:
-        -----
-        depts : list
-            List of Departments
+
+def parse_listing_cards(html: str) -> list[dict]:
+    """Extrae URLs de listings desde el HTML de una página Trovit.
+    Estratégicamente buscamos enlaces a detalles que suelen tener '/detalle/' o parámetros con 'cod.'
+    Este selector es heurístico y puede requerir actualización futura.
     """
-    # Read Existant file to append
-    _fname = ddir+"{}/trovit.csv".format(dt.date.today().isoformat())
-    try:
-        df = pd.read_csv(_fname, delimiter='~')
-    except:
-        print('New file, creating folder..')
-        try:
-            os.mkdir(ddir+'{}'.format(dt.date.today().isoformat()))
-            print('Created folder!')
-        except:
-            print('Folder exists already!')
-        df = pd.DataFrame()
-    # Append data
-    depdf = pd.DataFrame(depts)
-    print(depdf.head(1).to_dict())
-    try:
-        if df.empty:
-            depdf.set_index(['name','location']).to_csv(_fname, sep='~')
-            print('Correctly saved file: {}'.format(_fname))
-        else:
-            df = pd.concat([df, depdf])
-            df.set_index(['name','location']).to_csv(_fname, sep='~')
-            print('Correctly saved file: {}'.format(_fname))
-    except Exception as e:
-        print(e)
-        print('Could not save file: {}'.format(_fname))
-
-
-def scrape(content):
-    """ Scrape all departments per page
-    """
-    data = []
-    # Generate soup
-    soup = BeautifulSoup(content, 'html.parser')
-    with open(ddir+'trovit.html', 'w') as _F:
-        _F.write(soup.prettify())
-    # Get Characteristics
-    for d in soup.find_all(class_="item mx js-item js-backToTrovit"):
-        print('----')
-        try:
-            print(d) 
-        except Exception as e:
-            print(e)
+    soup = BeautifulSoup(html, 'html.parser')
+    listings = []
+    # Heurística: enlaces dentro de artículos o divs con clase 'item'
+    for a in soup.select('a'):  # broad, luego filtramos
+        href = a.get('href')
+        if not href:
             continue
-        break
-    print('Found {} depts'.format(len(data)))
-    return data
+        # Filtrar patrones típicos de Trovit (heurísticos)
+        if 'trovit.com.mx' in href or href.startswith('/'):
+            if any(k in href.lower() for k in ['property', 'detalle', 'cod.', 'adlist', 'listing']):
+                # Normalizar URL completa
+                if href.startswith('/'):
+                    href_full = 'https://casas.trovit.com.mx' + href
+                else:
+                    href_full = href
+                listings.append({'listing_url': href_full})
+    # Eliminar duplicados preserve order
+    seen = set()
+    unique = []
+    for item in listings:
+        u = item['listing_url']
+        if u not in seen:
+            seen.add(u)
+            unique.append(item)
+    return unique
 
-def paginate():
-    """ Loop over pages to retrieve all info available
+def fetch_page(url: str, timeout: int = 30) -> str | None:
+    try:
+        r = requests.get(url, headers=HEADERS, timeout=timeout)
+        if r.status_code != 200:
+            print(f"[tro] Status inesperado {r.status_code} en {url}")
+            return None
+        return r.text
+    except Exception as e:
+        print(f"[tro] Error solicitando {url}: {e}")
+        return None
 
-        Returns:
-        -----
-        pg_nums : int
-            Number of pages scraped
-    """
-    pg_nums = 1
-    while True:
-        try:
-            print(_base_url.format(pg_nums))
-            r = requests.get(_base_url.format(pg_nums),
-                headers={'user-agent': user_agent})
-            if r.status_code != 200:
-                raise Exception("Wrong Response")
-            depts = scrape(r.content)
-            if not depts:
-                raise Exception("No more departments")
-        except Exception as e:
-            print(e)
-            print('Finishing to retrieve info.')
+def build_page_url(base_url: str, page_number: int) -> str:
+    """Construye la URL de paginación.
+    Si base_url ya tiene '/page.N' se reemplaza, si no se añade '/page.N'."""
+    # reconocer patrón page.<num>
+    if re.search(r'/page\.\d+', base_url):
+        return re.sub(r'/page\.\d+', f'/page.{page_number}', base_url)
+    # Añadir sufijo si no existe
+    if base_url.endswith('/'):
+        return base_url + f'page.{page_number}'
+    return base_url + f'/page.{page_number}'
+
+def collect_url_mode():
+    base_url = resolve_base_url('tro')
+    output_file = os.environ.get('SCRAPER_OUTPUT_FILE')
+    if not base_url or not output_file:
+        print('[tro:url-mode] Faltan SCRAPER_INPUT_URL o SCRAPER_OUTPUT_FILE; abortando')
+        return False
+
+    meta = {
+        'source_scraper': 'tro',
+        'website': os.environ.get('SCRAPER_WEBSITE', 'Tro'),
+        'city': os.environ.get('SCRAPER_CITY', ''),
+        'operation': os.environ.get('SCRAPER_OPERATION', ''),
+        'product': os.environ.get('SCRAPER_PRODUCT', ''),
+        'batch_id': os.environ.get('SCRAPER_BATCH_ID', '')
+    }
+
+    max_pages = 120  # límite alto por defecto
+    try:
+        max_pages = int(os.environ.get('SCRAPER_MAX_PAGES', '120'))
+    except Exception:
+        max_pages = 120
+    aggregated_rows = []
+    seen_urls = set()
+    consecutive_empty = 0
+
+    for page in range(1, max_pages + 1):
+        page_url = build_page_url(base_url, page)
+        print(f"[tro:url-mode] Página {page}: {page_url}")
+        html = fetch_page(page_url)
+        if not html:
+            consecutive_empty += 1
+            if consecutive_empty >= 2:
+                print('[tro:url-mode] 2 páginas consecutivas sin contenido; deteniendo.')
+                break
+            continue
+        cards = parse_listing_cards(html)
+        new_this_page = 0
+        now_iso = dt.datetime.utcnow().isoformat()
+        for c in cards:
+            url_val = c['listing_url']
+            if url_val not in seen_urls:
+                seen_urls.add(url_val)
+                aggregated_rows.append({
+                    'source_scraper': meta['source_scraper'],
+                    'website': meta['website'],
+                    'city': meta['city'],
+                    'operation': meta['operation'],
+                    'product': meta['product'],
+                    'listing_url': url_val,
+                    'collected_at': now_iso,
+                    # no hay columnas ricas actualmente; dejamos placeholders opcionales
+                })
+                new_this_page += 1
+        print(f"[tro:url-mode] Nuevos enlaces página {page}: {new_this_page}")
+        if new_this_page == 0:
+            consecutive_empty += 1
+        else:
+            consecutive_empty = 0
+        if consecutive_empty >= 2:
+            print('[tro:url-mode] 2 páginas consecutivas sin nuevos enlaces; fin.')
             break
-        # Store values
-        #save(depts)
-        pg_nums += 1
-        break ###
-    return pg_nums
+        # Pequeña pausa para no saturar
+        time.sleep(1.5)
+
+    if not aggregated_rows:
+        print('[tro:url-mode] No se recolectaron URLs')
+        # Crear archivo vacío con cabecera estándar (para evitar fallo de orquestador)
+        try:
+            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        except Exception:
+            pass
+        pd.DataFrame(columns=['source_scraper','website','city','operation','product','listing_url','collected_at']).to_csv(output_file, index=False, encoding='utf-8')
+        return True
+
+    out_df = pd.DataFrame(aggregated_rows)
+    try:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    except Exception:
+        pass
+    if os.path.exists(output_file):
+        try:
+            prev = pd.read_csv(output_file)
+            out_df = pd.concat([prev, out_df], ignore_index=True)
+        except Exception:
+            pass
+    out_df.drop_duplicates(subset=['listing_url'], inplace=True)
+    out_df.to_csv(output_file, index=False, encoding='utf-8')
+    print(f"[tro:url-mode] Archivo actualizado: {output_file} ({len(out_df)} filas)")
+    return True
+
+def legacy_single_page_debug():
+    """Pequeño modo legacy/debug para inspeccionar estructura actual.
+    Guarda HTML bruto y listado de enlaces detectados en carpeta temporal dentro de DDIR.
+    """
+    url = os.environ.get('SCRAPER_INPUT_URL') or 'https://casas.trovit.com.mx/index.php/cod.search_homes/type.1/what_d.Mexico'
+    html = fetch_page(url)
+    if not html:
+        return False
+    os.makedirs(DDIR, exist_ok=True)
+    with open(os.path.join(DDIR, 'trovit_debug.html'), 'w', encoding='utf-8') as f:
+        f.write(html)
+    cards = parse_listing_cards(html)
+    debug_csv = os.path.join(DDIR, 'trovit_debug_urls.csv')
+    pd.DataFrame(cards).to_csv(debug_csv, index=False)
+    print(f"[tro:legacy] Debug guardado: {debug_csv} ({len(cards)} urls)")
+    return True
 
 def main():
-    """ Main method
-    """
-    print('Starting to scrape Inmuebles24')
-    pages = paginate()
-
+    mode = os.environ.get('SCRAPER_MODE', 'url')
+    if mode == 'url':
+        return collect_url_mode()
+    print('[tro] Modo legacy/debug')
+    return legacy_single_page_debug()
 
 if __name__ == '__main__':
     main()

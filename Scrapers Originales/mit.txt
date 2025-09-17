@@ -1,0 +1,49 @@
+Scraper: mit.py
+Sitio objetivo: casas.mitula.mx (listado de propiedades en venta en Zapopan)
+Patrón de URL: https://casas.mitula.mx/find?page={i}&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29
+
+Variables extraídas:
+- nombre: Título del listado (span[data-test=snippet__title]).
+- precio: Precio de la propiedad (span[data-test=price__actual]).
+- ubicacion: Ubicación general o colonia (div[data-test=snippet__location]).
+- habitaciones: Número de recámaras (p[data-test=bedrooms]).
+- baños: Número de baños (p[data-test=bathrooms]).
+- metros_cuadrados: Área construida o total (p[data-test=floor-area]).
+- amenidades: Listado plano (join con coma) de amenidades mostradas como badges (span.listing-card__facilities__facility).
+- fecha_publicacion: Texto con fecha relativa o explícita (parte izquierda antes del guión en snippet__published-date-and-agency).
+- agencia: Nombre de la agencia / anunciante (parte derecha después del guión en snippet__published-date-and-agency).
+- descripcion: Descripción resumida (div[data-test=snippet__description]).
+- url: URL absoluta al detalle (compuesta agregando dominio al href del link asociado al botón 'Ver en detalle').
+
+Notas:
+- La división de fecha_publicacion y agencia se hace dividiendo el texto por el primer guion '-'.
+- 'amenidades' puede estar vacío si no hay badges.
+- No se guardan estacionamientos explícitos en este scraper.
+- Salida diaria en 'mitula-zapopan-venta.csv'.
+
+Listado variable -> selector / expresión:
+1. nombre - card.find("span", {"data-test": "snippet__title"})
+2. precio - card.find("span", {"data-test": "price__actual"})
+3. ubicacion - card.find("div", {"data-test": "snippet__location"})
+4. habitaciones - card.find("p", {"data-test": "bedrooms"})
+5. baños - card.find("p", {"data-test": "bathrooms"})
+6. metros_cuadrados - card.find("p", {"data-test": "floor-area"})
+7. amenidades - card.find_all("span", class_="listing-card__facilities__facility") (join por coma)
+8. fecha_publicacion - pub_info_p = card.find("p", {"data-test": "snippet__published-date-and-agency"}); split('-')[0]
+9. agencia - pub_info_p split('-')[1]
+10. descripcion - card.find("div", {"data-test": "snippet__description"})
+11. url - detail_button = card.find("button", {"data-test": "snippet__view-detail-button"}); parent <a>.href + prefijo dominio
+
+Paginación / Recorrido de páginas:
+Patrón: f'https://casas.mitula.mx/find?page={i}&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29'
+Ejemplos:
+1. ...page=1&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29
+2. ...page=2&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29
+N. ...page=N&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29
+Bucle (extracto):
+def main():
+	total_urls = N
+	for i in range(1, total_urls + 1):
+		URL = f'https://casas.mitula.mx/find?page={i}&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29'
+		driver.get(URL)
+		... scrape_page_source(driver.page_source)

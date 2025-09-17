@@ -1,0 +1,47 @@
+Scraper: inm24.py
+Sitio objetivo: inmuebles24.com (listado de departamentos en venta en Zapopan)
+Patrón de URL: https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-{i}.html
+
+Variables extraídas:
+- nombre: Texto principal del enlace del anuncio (normalmente el título). Igual que 'descripcion'.
+- descripcion: Se repite el mismo valor que 'nombre' (redundante) tomado del <a> dentro del h3 de descripción.
+- ubicacion: Combina dirección corta y zona/colonia (address + location). Si solo existe una parte se usa esa.
+- url: Enlace absoluto al detalle del anuncio (se antepone dominio al href relativo).
+- precio: Precio listado del anuncio (string, tal cual aparece, puede incluir moneda y formato con comas o abreviaturas).
+- tipo: Tipo de operación. Se fija a 'venta'.
+- habitaciones: Texto que contiene número de recámaras (span dentro de features con 'rec').
+- baños: Texto que contiene número de baños (span dentro de features con 'bañ').
+
+Notas:
+- No se extraen estacionamientos ni m2 en este scraper de listado.
+- El scraper usa seleniumbase Driver con evasión (uc=True) y clic de captcha.
+- Los campos habitaciones y baños pueden incluir sufijos como 'rec.' o 'baños'.
+- Datos se acumulan día a día en un CSV en carpeta data/YYYY-MM-DD.
+
+Listado variable -> origen exacto:
+1. nombre - desc_h3 = card.find("h3", {"data-qa": "POSTING_CARD_DESCRIPTION"}); link_a = desc_h3.find("a"); link_a.get_text()
+2. descripcion - mismo elemento que nombre (link_a.get_text())
+3. url - "https://www.inmuebles24.com" + link_a.get('href')
+4. precio - price_div = card.find("div", {"data-qa": "POSTING_CARD_PRICE"}); price_div.get_text()
+5. ubicacion - address_div.get_text() y loc_h2.get_text() combinados
+6. tipo - valor fijo 'venta'
+7. habitaciones - features.find_all("span") filtrando texto que contiene 'rec'
+8. baños - features.find_all("span") filtrando texto que contiene 'bañ'
+
+Paginación / Recorrido de páginas:
+Patrón usado en código: f'https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-{i}.html'
+Ejemplos secuenciales:
+1. https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-1.html
+2. https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-2.html
+3. https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-3.html
+...
+N. https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-N.html
+Bucle principal (extracto):
+def main():
+	i = 1
+	total_urls = N
+	while i <= total_urls:
+		URL = f'https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-{i}.html'
+		driver = Driver(uc=True)
+		i += 1
+		... scrape_page_source(driver.page_source)

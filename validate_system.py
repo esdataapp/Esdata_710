@@ -357,13 +357,34 @@ class SystemValidator:
                 
                 print(f"   ✅ Orchestrator se puede importar correctamente")
                 
-                # Intentar crear instancia del orchestrator
-                orchestrator = orchestrator_module.WindowsScrapingOrchestrator()
-                print(f"   ✅ Orchestrator se puede instanciar")
-                
+                # Intentar crear instancia del orchestrator (detección dinámica de clase)
+                orchestrator_cls = None
+                for candidate in ["LinuxScrapingOrchestrator", "WindowsScrapingOrchestrator", "ScrapingOrchestrator"]:
+                    if hasattr(orchestrator_module, candidate):
+                        orchestrator_cls = getattr(orchestrator_module, candidate)
+                        break
+                if orchestrator_cls is None:
+                    print("   ❌ No se encontró clase de orquestador reconocida en orchestrator.py")
+                    os.chdir(original_cwd)
+                    return False
+                orchestrator = orchestrator_cls()
+                print(f"   ✅ Orchestrator ({orchestrator_cls.__name__}) se puede instanciar")
+
                 # Verificar configuración
                 if hasattr(orchestrator, 'config') and orchestrator.config:
                     print(f"   ✅ Configuración cargada en orchestrator")
+                # Verificar columnas de contadores en la base de datos
+                try:
+                    if hasattr(orchestrator, 'db_path') and orchestrator.db_path.exists():
+                        conn = sqlite3.connect(orchestrator.db_path)
+                        cur = conn.execute("PRAGMA table_info(execution_batches)")
+                        cols = [r[1] for r in cur.fetchall()]
+                        for needed in ["completed_tasks", "failed_tasks"]:
+                            if needed not in cols:
+                                print(f"   ⚠️ Columna '{needed}' ausente en execution_batches (revisar migración)")
+                        conn.close()
+                except Exception as ie:
+                    print(f"   ⚠️ No se pudo verificar columnas de batch: {ie}")
                 
                 os.chdir(original_cwd)
                 return True

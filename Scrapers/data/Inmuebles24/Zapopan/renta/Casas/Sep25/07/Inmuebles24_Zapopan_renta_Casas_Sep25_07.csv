@@ -1,0 +1,2 @@
+scraper,timestamp,status,note,output_file
+tro,2025-09-17T13:18:23.640266,executed_with_adapter,Ejecutado correctamente (sin archivo legacy detectado),data/trovit/Zapopan/renta/Bodegas/Sep25/07/trovit_Zapopan_renta_Bodegas_Sep25_07.csv

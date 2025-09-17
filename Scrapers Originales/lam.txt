@@ -1,0 +1,50 @@
+Scraper: lam.py
+Sitio objetivo: lamudi.com.mx (listado de departamentos en venta en Zapopan, Jalisco)
+Patrón de URL: https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page={i}
+
+Variables extraídas:
+- nombre: Título resumido del anuncio (span.snippet__content__title).
+- descripcion: Texto corto descriptivo (div.snippet__content__description).
+- ubicacion: Ubicación geográfica (span[data-test=snippet-content-location]).
+- url: Enlace absoluto al detalle (dominio + href del primer <a> de la tarjeta).
+- precio: Precio listado (div.snippet__content__price).
+- tipo: Tipo de operación. Se fija como 'venta'.
+- habitaciones: Número de recámaras (span[data-test=bedrooms-value]).
+- baños: Número de baños completos (span[data-test=full-bathrooms-value]).
+- metros_cuadrados: Área (span[data-test=area-value]) en texto (puede incluir m²).
+- estacionamientos: Número de cajones de estacionamiento (span[data-test=amenity-value]) si está presente.
+
+Notas:
+- No se distingue entre superficie total y construida en este listado.
+- Todos los valores se almacenan como texto sin normalización.
+- Puede haber tarjetas incompletas generando valores None.
+- Se concatena al CSV diario 'lamudi-guadalajara-venta.csv'.
+
+Listado variable -> selector / expresión:
+1. nombre - title_span = card.find("span", class_="snippet__content__title")
+2. descripcion - card.find("div", class_="snippet__content__description")
+3. ubicacion - card.find("span", attrs={"data-test": "snippet-content-location"})
+4. url - link_a = card.find("a", href=True); "https://www.lamudi.com.mx" + link_a['href']
+5. precio - card.find("div", class_="snippet__content__price")
+6. tipo - valor fijo 'venta'
+7. habitaciones - card.find("span", attrs={"data-test": "bedrooms-value"})
+8. baños - card.find("span", attrs={"data-test": "full-bathrooms-value"})
+9. metros_cuadrados - card.find("span", attrs={"data-test": "area-value"})
+10. estacionamientos - card.find("span", attrs={"data-test": "amenity-value"})
+
+Paginación / Recorrido de páginas:
+Patrón usado: f'https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page={i}'
+Ejemplos:
+1. https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page=1
+2. https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page=2
+3. ...
+N. https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page=N
+Bucle (extracto):
+def main():
+	i = 1
+	total_urls = N
+	while i <= total_urls:
+		URL = f'https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page={i}'
+		driver = Driver(uc=True)
+		i += 1
+		... scrape_page_source(driver.page_source)

@@ -1,0 +1,39 @@
+Scraper: cyt.py
+Sitio objetivo: casasyterrenos.com (listado de departamentos en venta en Zapopan, Jalisco)
+URL base: https://www.casasyterrenos.com/jalisco/zapopan/departamentos/venta
+
+Variables extraídas:
+- descripcion: Título resumido del anuncio / descripción corta del departamento.
+- ubicacion: Zona o colonia donde se ubica la propiedad (texto mostrado en la tarjeta).
+- url: Enlace absoluto al detalle del anuncio.
+- precio: Precio listado (formato de texto, puede incluir símbolo de moneda y abreviaturas).
+- tipo: Tipo de operación. Se fija como 'venta' en el código.
+- habitaciones: Número de recámaras indicado en la tarjeta (string tal cual aparece, puede incluir texto adicional).
+- baños: Número de baños completos (string tal cual aparece).
+- estacionamientos: Número de cajones de estacionamiento (string tal cual aparece).
+- superficie: Superficie construida o total (texto mostrado en el listado, puede incluir unidad como m²).
+- codigo: Código interno del anuncio mostrado como 'Código: XXXX' (se limpia para quedarse solo con el valor).
+
+Listado variable -> origen exacto en el HTML:
+1. descripcion - descripcion_span = card.find("span", class_=lambda x: x and "text-text-primary font-bold line-clamp-2" in x)
+2. url - link = card.find("a", target="_blank"); link.get('href')
+3. ubicacion - card.find("span", class_=lambda x: x and "text-blue-cyt" in x)
+4. precio - card.find("span", class_=lambda x: x and "text-blue-cyt font-bold" in x)
+5. tipo - valor fijo 'venta'
+6. habitaciones - features = card.find_all("p", class_=lambda x: x and "text-sm" in x); features[0].get_text()
+7. baños - features[1].get_text()
+8. estacionamientos - features[2].get_text()
+9. superficie - features[3].get_text()
+10. codigo - codigo_span = card.find("span", class_=lambda x: x and "text-extralight" in x); codigo_span.get_text().replace("Código: ", "")
+
+Paginación / Recorrido de páginas:
+URL base parametrizada: URL_BASE = "https://www.casasyterrenos.com/jalisco/zapopan/departamentos/venta?desde=0&hasta=1000000000&utm_source=results_page="
+Ejemplos:
+- Página 90: https://www.casasyterrenos.com/jalisco/zapopan/departamentos/venta?desde=0&hasta=1000000000&utm_source=results_page=90
+- Página 91: ...results_page=91
+- Página N: ...results_page=N
+Bucle:
+for i in range(90, total_pages + 1):
+	URL = f"{URL_BASE}{i}"
+	driver.get(URL)
+	... scrape_page_source(driver.page_source)

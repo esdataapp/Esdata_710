@@ -51,12 +51,44 @@ class ScraperAdapter:
             # Cargar el módulo
             spec.loader.exec_module(scraper_module)
             
-            # Configurar variables del scraper
+            # Configuración de entorno y variables de modo
+            mode = 'detail' if scraper_name.endswith('_det') else 'url'
+            os.environ['SCRAPER_MODE'] = mode
+            # Asegurar rutas absolutas para evitar problemas de CWD
+            abs_output_file = output_file if output_file.is_absolute() else (self.base_dir / output_file).resolve()
+            # Asegurar directorio de salida existente
+            abs_output_file.parent.mkdir(parents=True, exist_ok=True)
+            os.environ['SCRAPER_OUTPUT_FILE'] = str(abs_output_file)
+            os.environ['SCRAPER_BASE_DIR'] = str(self.base_dir)
+            os.environ['SCRAPER_WEBSITE'] = str(kwargs.get('website', ''))
+            os.environ['SCRAPER_CITY'] = str(kwargs.get('city', ''))
+            os.environ['SCRAPER_OPERATION'] = str(kwargs.get('operation', ''))
+            os.environ['SCRAPER_PRODUCT'] = str(kwargs.get('product', ''))
+            os.environ['SCRAPER_BATCH_ID'] = str(kwargs.get('batch_id', ''))
+            os.environ['SCRAPER_INPUT_URL'] = url or ''
+            # Limite de paginas (inyectado por orquestador segun sitio/config)
+            max_pages = kwargs.get('max_pages')
+            if max_pages is not None and str(max_pages).strip():
+                os.environ['SCRAPER_MAX_PAGES'] = str(max_pages)
+            # Para scrapers de detalle: pasar hint de archivo URL si existe en el mismo folder
+            if mode == 'detail':
+                # patrón de archivo URL generado por orquestador ya está en el mismo directorio
+                parent_dir = output_file.parent
+                base_scraper = scraper_name.replace('_det', '')
+                # Buscar *_URL_* del mismo sitio y batch
+                candidate = None
+                for f in parent_dir.glob(f"{kwargs.get('website','')}URL_*{kwargs.get('city','')}*{kwargs.get('operation','')}*{kwargs.get('product','')}*.csv"):
+                    candidate = f
+                    break
+                if candidate:
+                    os.environ['SCRAPER_URL_LIST_FILE'] = str(candidate)
+            # Ajustar DDIR si el scraper lo usa
             if hasattr(scraper_module, 'DDIR'):
-                scraper_module.DDIR = str(output_file.parent) + os.sep  # type: ignore
+                # Dir absoluto del output para scrapers legacy que escriben en DDIR
+                scraper_module.DDIR = str(abs_output_file.parent) + os.sep  # type: ignore
             
             # Determinar método de ejecución
-            if scraper_name in ['cyt', 'inm24', 'lam', 'mit', 'prop', 'tro']:
+            if scraper_name in ['cyt', 'inm24', 'lam', 'mit', 'prop', 'tro'] and mode == 'url':
                 success = self._run_standard_scraper(scraper_module, scraper_name, url, output_file, **kwargs)
             elif scraper_name.endswith('_det'):
                 success = self._run_detail_scraper(scraper_module, scraper_name, output_file, **kwargs)
@@ -81,12 +113,14 @@ class ScraperAdapter:
             
             # Para scrapers que usan main()
             if hasattr(module, 'main'):
-                # Simular el comportamiento original pero con nuevos paths
+                # Ejecutar main del scraper
                 result = module.main()
-                
-                # Si se generó algún archivo, moverlo a la ubicación correcta
+                # Si el propio scraper ya escribió el archivo objetivo, no mover ni crear placeholder
+                if output_file.exists() and output_file.stat().st_size > 0:
+                    logger.info(f"[adapter] Archivo ya generado por scraper: {output_file}")
+                    return result is not False
+                # De lo contrario intentar mover archivo legacy
                 self._move_generated_files(scraper_name, output_file)
-                
                 return result is not False
             
             # Para scrapers que solo tienen funciones de scraping
@@ -141,6 +175,10 @@ class ScraperAdapter:
     def _move_generated_files(self, scraper_name: str, target_file: Path):
         """Mueve archivos generados por el scraper a la ubicación correcta"""
         try:
+            # Si el archivo ya existe (escrito por el scraper refactorizado) no hacer nada
+            if target_file.exists() and target_file.stat().st_size > 0:
+                logger.info(f"[adapter] Skip move: archivo destino ya existe {target_file}")
+                return True
             # Buscar archivos CSV generados recientemente en el directorio de scrapers
             scrapers_dir = self.scrapers_dir
             data_dir = scrapers_dir / "data"
@@ -161,8 +199,9 @@ class ScraperAdapter:
                         logger.info(f"Archivo movido: {latest_file} -> {target_file}")
                         return True
             
-            # Si no se encuentra archivo generado, crear uno de ejemplo
-            self._create_placeholder_file(target_file, scraper_name, "Ejecutado correctamente")
+            # Si no se encuentra archivo generado y no existe destino, crear placeholder
+            if not target_file.exists():
+                self._create_placeholder_file(target_file, scraper_name, "Ejecutado correctamente (sin archivo legacy detectado)")
             return True
             
         except Exception as e:

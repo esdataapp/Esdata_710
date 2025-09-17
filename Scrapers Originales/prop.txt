@@ -1,0 +1,45 @@
+Scraper: prop.py
+Sitio objetivo: propiedades.com (departamentos en Ciudad de México - DF)
+Estado actual: Implementación incompleta / esqueleto de scraper.
+URL base patrón: https://propiedades.com/df/departamentos?pagina={n}
+
+Funciones principales:
+- paginate(): Recorre páginas incrementando 'pagina' hasta que la respuesta no sea 200 o no haya más resultados.
+- scrape(content): Genera BeautifulSoup, guarda HTML en 'data/propiedades.html', busca elementos con class 'ad' pero NO extrae campos ni los agrega a la lista 'data'. Actualmente siempre retorna lista vacía.
+- save(depts): Preparado para guardar variables 'name' y 'location' como índice, usando separador '~'. Sin embargo, nunca se llama porque scrape no devuelve datos.
+
+Variables previstas (inferidas por convención del proyecto):
+- name: Nombre o título del anuncio (no implementado).
+- location: Ubicación del inmueble (no implementado).
+- (posibles) precio, habitaciones, baños, superficie, url: No implementados pero típicos de los otros scrapers.
+
+Listado actual (no implementado efectivamente):
+1. name - (faltaría algo como d.find(...))
+2. location - (faltaría selector para ubicación)
+3. precio - (no implementado)
+4. habitaciones - (no implementado)
+5. baños - (no implementado)
+6. superficie - (no implementado)
+7. url - (no implementado)
+
+Nota: Dentro de scrape() actualmente solo: for d in soup.find_all(class_="ad"): imprime el bloque y break.
+
+Paginación / Recorrido (esqueleto actual):
+Función paginate():
+pg_nums = 1
+while True:
+	r = requests.get(_base_url.format(pg_nums))
+	depts = scrape(r.content)
+	if not depts: break (lanza excepción 'No more departments')
+	pg_nums += 1
+Actualmente se corta tras primera vuelta por el 'break ###'.
+Ejemplos de URLs esperados:
+1. https://propiedades.com/df/departamentos?pagina=1
+2. https://propiedades.com/df/departamentos?pagina=2
+N. https://propiedades.com/df/departamentos?pagina=N
+
+Notas:
+- Falta importar módulos usados en save(): 'os' y 'datetime as dt'.
+- El scraper imprime el primer bloque 'ad' para inspección, luego rompe el bucle y finaliza.
+- Requiere implementación de parsing y normalización de campos.
+- Actualmente no genera CSV.

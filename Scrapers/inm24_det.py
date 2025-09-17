@@ -10,8 +10,9 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import sys
 
-DDIR = 'data/'
+DDIR = 'data/'  # Sobrescrito por adapter en ejecución
 
 def close_cookie_banner(driver):
     """
@@ -299,76 +300,92 @@ def extract_information_after_click(driver):
     
     return info_botones
 
-def save(data_dict):
-    today_str = dt.date.today().isoformat()
-    out_dir = os.path.join(DDIR, today_str)
-    os.makedirs(out_dir, exist_ok=True)
-    fname = os.path.join(out_dir, "inmuebles24_terrenos_guadalajara_detalle.csv")
-
+def save_detail_row(data_dict, output_file):
+    """Guarda o acumula una fila de detalle en el archivo final indicado por el adapter.
+    Normaliza saltos de línea y concatena."""
     df_new = pd.DataFrame([data_dict])
-    try:
-        df_existing = pd.read_csv(fname, encoding="utf-8")
-    except FileNotFoundError:
-        df_existing = pd.DataFrame()
-
-    final_df = pd.concat([df_existing, df_new], ignore_index=True)
-
-    # Reemplazar saltos de línea en todas las columnas por un espacio
+    if os.path.exists(output_file):
+        try:
+            df_existing = pd.read_csv(output_file, encoding='utf-8')
+        except Exception:
+            df_existing = pd.DataFrame()
+        final_df = pd.concat([df_existing, df_new], ignore_index=True)
+    else:
+        final_df = df_new
     final_df = final_df.replace(r'[\r\n]+', ' ', regex=True)
+    final_df.to_csv(output_file, index=False, encoding='utf-8')
+    print(f"[inm24_det] Fila detalle agregada -> {output_file}")
 
-    final_df.to_csv(fname, index=False, encoding="utf-8")
-    print(f"Datos guardados en: {fname}")
 
+def resolve_url_list_file():
+    # Prioridad 1: variable de entorno inyectada por adapter
+    env_file = os.environ.get('SCRAPER_URL_LIST_FILE')
+    if env_file and os.path.exists(env_file):
+        return env_file
+    # Fallback: buscar patrón *_URL_* en mismo directorio de salida si se conoce SCRAPER_OUTPUT_FILE
+    out = os.environ.get('SCRAPER_OUTPUT_FILE')
+    if out:
+        parent = os.path.dirname(out)
+        website = os.environ.get('SCRAPER_WEBSITE', 'Inm24')
+        pattern_prefix = f"{website}URL_"
+        for f in os.listdir(parent):
+            if f.startswith(pattern_prefix) and f.endswith('.csv'):
+                return os.path.join(parent, f)
+    return None
 
 def main():
-    # Leer el archivo CSV que contiene las URLs en una columna "url"
-    urls_df = pd.read_csv("data/2025-04-25/inmuebles24-guadalajara-terrenos-venta.csv")
-    urls = urls_df["url"].tolist()
-    
-    #for URL in urls:
+    output_file = os.environ.get('SCRAPER_OUTPUT_FILE')
+    url_list_file = resolve_url_list_file()
+    if not url_list_file:
+        print("[inm24_det] No se encontró archivo de URLs. Saliendo con éxito suave.")
+        # Crear placeholder mínimo si se espera un archivo final
+        if output_file and not os.path.exists(output_file):
+            pd.DataFrame([{'status': 'no_url_file'}]).to_csv(output_file, index=False)
+        return True
+    print(f"[inm24_det] Usando archivo de URLs: {url_list_file}")
+    try:
+        urls_df = pd.read_csv(url_list_file, encoding='utf-8')
+    except Exception as e:
+        print(f"[inm24_det] Error leyendo URL file: {e}")
+        return False
+    # Columnas posibles: listing_url | url
+    url_col = 'listing_url' if 'listing_url' in urls_df.columns else ('url' if 'url' in urls_df.columns else None)
+    if not url_col:
+        print("[inm24_det] Archivo de URLs no tiene columna válida (listing_url/url)")
+        return False
+    urls = urls_df[url_col].dropna().unique().tolist()
+    if not urls:
+        print("[inm24_det] Lista de URLs vacía")
+        return True
     for i, URL in enumerate(urls, start=1):
-        print(f"Iteración {i} de {len(urls)}: {URL}")
-        if "clasificado" not in URL:
-            print(f"Saltando URL (no clasificado): {URL}")
+        print(f"[inm24_det] {i}/{len(urls)} -> {URL}")
+        if 'clasificado' not in URL:
             continue
-        
-        print(f"Navegando a: {URL}")
-        
-        # Iniciar el navegador dentro del bucle
         options = Options()
-        # options.add_argument("--headless")  # Descomentar si deseas modo headless
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument('--headless=new')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--disable-dev-shm-usage')
         driver = webdriver.Chrome(options=options)
         driver.set_page_load_timeout(60)
-        
         try:
             driver.get(URL)
             WebDriverWait(driver, 30).until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, "h2.title-type-sup-property"))
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'h2.title-type-sup-property'))
             )
-            # Incrementar un poco el tiempo de espera para evitar bloqueos
             time.sleep(2)
-            
             html = driver.page_source
             data = scrape_property_detail(driver, html)
-            
-            # Extraer información adicional mediante los botones
             botones_data = extract_information_after_click(driver)
             data.update(botones_data)
-            
-            # Guardar todos los datos en un único CSV
-            save(data)
-            
+            data['source_url'] = URL
+            if output_file:
+                save_detail_row(data, output_file)
         except Exception as e:
-            print(f"Error al cargar la página {URL}: {e}")
-        
+            print(f"[inm24_det] Error en URL {URL}: {e}")
         finally:
-            # Cerrar el navegador al terminar cada URL
             driver.quit()
-        
-        # Agregar un pequeño retraso adicional antes de la siguiente URL
-        time.sleep(2)
+        time.sleep(1)
+    return True
 
 if __name__ == "__main__":
     main()

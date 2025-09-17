@@ -1,7 +1,17 @@
 #!/usr/bin/env python3
+"""cyt.py - Scraper Casas y Terrenos (modo armonizado URL)
+
+Refactor para integrarse al orquestador moderno:
+  - Modo URL (SCRAPER_MODE=url): genera archivo normalizado con columnas estándar
+  - Modo legacy (fallback): mantiene scraping básico previo para compatibilidad temporal
+
+Columnas salida (modo URL): source_scraper, website, city, operation, product, listing_url, collected_at
+"""
+from __future__ import annotations
 import os
-import pandas as pd
+import time
 import datetime as dt
+import pandas as pd
 from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -9,55 +19,41 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-DDIR = 'data/'
+DDIR = 'data/'  # sobrescrito por adapter si aplica legacy
 
-URL_BASE = "https://www.casasyterrenos.com/jalisco/zapopan/departamentos/venta?desde=0&hasta=1000000000&utm_source=results_page="
+# Selector heurístico de cards
+CARD_XPATH = "//div[contains(@class, 'mx-2') and contains(@class, 'w-[320px]')]"
 
-
-def scrape_page_source(html):
+def extract_cards(html: str) -> pd.DataFrame:
     columns = ['descripcion', 'ubicacion', 'url', 'precio', 'tipo', 'habitaciones', 'baños', 'estacionamientos', 'superficie', 'codigo']
     data = pd.DataFrame(columns=columns)
     soup = BeautifulSoup(html, 'html.parser')
     cards = soup.find_all("div", class_=lambda x: x and "mx-2" in x and "w-[320px]" in x)
-
     for card in cards:
-        temp_dict = {col: None for col in columns}
-        temp_dict['tipo'] = 'venta'
-
-        # Descripción y URL
+        temp = {c: None for c in columns}
+        temp['tipo'] = 'venta'
         link = card.find("a", target="_blank")
         if link:
-            descripcion_span = card.find("span", class_=lambda x: x and "text-text-primary font-bold line-clamp-2" in x)
-            temp_dict['descripcion'] = descripcion_span.get_text(strip=True) if descripcion_span else None
-            temp_dict['url'] = link.get('href', None)
-            
-        # Ubicación
-        ubicacion_span = card.find("span", class_=lambda x: x and "text-blue-cyt" in x)
-        temp_dict['ubicacion'] = ubicacion_span.get_text(strip=True) if ubicacion_span else None
-
-        # Precio
-        precio_span = card.find("span", class_=lambda x: x and "text-blue-cyt font-bold" in x)
-        temp_dict['precio'] = precio_span.get_text(strip=True) if precio_span else None
-
-        # Características (Habitaciones, Baños, Estacionamientos, Superficie)
+            desc_span = card.find("span", class_=lambda x: x and "text-text-primary font-bold line-clamp-2" in x)
+            temp['descripcion'] = desc_span.get_text(strip=True) if desc_span else None
+            temp['url'] = link.get('href')
+        ubic = card.find("span", class_=lambda x: x and "text-blue-cyt" in x)
+        temp['ubicacion'] = ubic.get_text(strip=True) if ubic else None
+        precio = card.find("span", class_=lambda x: x and "text-blue-cyt font-bold" in x)
+        temp['precio'] = precio.get_text(strip=True) if precio else None
         features = card.find_all("p", class_=lambda x: x and "text-sm" in x)
         if len(features) >= 4:
-            temp_dict['habitaciones'] = features[0].get_text(strip=True)
-            temp_dict['baños'] = features[1].get_text(strip=True)
-            temp_dict['estacionamientos'] = features[2].get_text(strip=True)
-            temp_dict['superficie'] = features[3].get_text(strip=True)
-
-        # Código de la propiedad
-        codigo_span = card.find("span", class_=lambda x: x and "text-extralight" in x)
-        if codigo_span:
-            temp_dict['codigo'] = codigo_span.get_text(strip=True).replace("Código: ", "")
-
-        data = pd.concat([data, pd.DataFrame([temp_dict])], ignore_index=True)
-    
+            temp['habitaciones'] = features[0].get_text(strip=True)
+            temp['baños'] = features[1].get_text(strip=True)
+            temp['estacionamientos'] = features[2].get_text(strip=True)
+            temp['superficie'] = features[3].get_text(strip=True)
+        codigo = card.find("span", class_=lambda x: x and "text-extralight" in x)
+        if codigo:
+            temp['codigo'] = codigo.get_text(strip=True).replace("Código: ", "")
+        data = pd.concat([data, pd.DataFrame([temp])], ignore_index=True)
     return data
 
-
-def save(df_page):
+def save_legacy(df_page: pd.DataFrame):
     today_str = dt.date.today().isoformat()
     out_dir = os.path.join(DDIR, today_str)
     os.makedirs(out_dir, exist_ok=True)
@@ -68,32 +64,188 @@ def save(df_page):
         df_existing = pd.DataFrame()
     final_df = pd.concat([df_existing, df_page], ignore_index=True)
     final_df.to_csv(fname, index=False)
-    print(f"Datos guardados en: {fname}")
+    print(f"[cyt:legacy] Datos guardados en: {fname}")
 
+def resolve_base_url(scraper_name: str = 'cyt') -> str | None:
+    """Resuelve la URL base desde SCRAPER_INPUT_URL o desde <scraper>_urls.csv
+    filtrando por Website/Ciudad/Operacion/Producto.
+    """
+    env_url = os.environ.get('SCRAPER_INPUT_URL')
+    if env_url:
+        return env_url
+    base_dir = os.environ.get('SCRAPER_BASE_DIR') or os.getcwd()
+    candidates = [
+        os.path.join(base_dir, 'urls', f'{scraper_name}_urls.csv'),
+        os.path.join(base_dir, 'Urls', f'{scraper_name}_urls.csv'),
+    ]
+    for path in candidates:
+        if os.path.exists(path):
+            try:
+                df = pd.read_csv(path)
+                w = os.environ.get('SCRAPER_WEBSITE', '')
+                c = os.environ.get('SCRAPER_CITY', '')
+                o = os.environ.get('SCRAPER_OPERATION', '')
+                p = os.environ.get('SCRAPER_PRODUCT', '')
+                mask = (
+                    (df['PaginaWeb'].astype(str) == w) &
+                    (df['Ciudad'].astype(str) == c) &
+                    (df['Operacion'].astype(str) == o) &
+                    (df['ProductoPaginaWeb'].astype(str) == p)
+                )
+                row = df[mask].head(1)
+                if not row.empty:
+                    return str(row.iloc[0]['URL'])
+                if len(df) > 0:
+                    return str(df.iloc[0]['URL'])
+            except Exception as e:
+                print(f"[cyt] No se pudo leer CSV de URLs ({path}): {e}")
+                continue
+    return None
 
-def main():
-    total_pages = 120  # Número de páginas a recorrer
+def url_mode_collect():
+    base_url = resolve_base_url('cyt')
+    output_file = os.environ.get('SCRAPER_OUTPUT_FILE')
+    if not base_url or not output_file:
+        print('[cyt:url-mode] Faltan SCRAPER_INPUT_URL o SCRAPER_OUTPUT_FILE')
+        return False
+    meta = {
+        'source_scraper': 'cyt',
+        'website': os.environ.get('SCRAPER_WEBSITE', 'CyT'),
+        'city': os.environ.get('SCRAPER_CITY', ''),
+        'operation': os.environ.get('SCRAPER_OPERATION', ''),
+        'product': os.environ.get('SCRAPER_PRODUCT', ''),
+        'batch_id': os.environ.get('SCRAPER_BATCH_ID', '')
+    }
+    # Estrategia: detectar parámetro de paginación '?pagina=' o final '?desde=' incremental.
+    # En la URL original parece usarse '?desde=' como offset. Asumimos incremento de 1 y tope de seguridad.
+    urls_seen = set()
+    aggregated = []
+    try:
+        max_pages = int(os.environ.get('SCRAPER_MAX_PAGES', '120'))
+    except Exception:
+        max_pages = 120
+    consecutive_empty = 0
     options = Options()
-    options.add_argument("--headless")
+    options.add_argument('--headless=new')
+    options.add_argument('--no-sandbox')
+    options.add_argument('--disable-dev-shm-usage')
     driver = webdriver.Chrome(options=options)
     driver.set_page_load_timeout(60)
+    try:
+        for page in range(0, max_pages):
+            # Heurística: reemplazar "results_page=" valor final
+            if 'results_page=' in base_url:
+                page_url = re_sub_results_page(base_url, page)
+            else:
+                sep = '&' if '?' in base_url else '?'
+                page_url = f"{base_url}{sep}results_page={page}"
+            print(f"[cyt:url-mode] Página lógica {page}: {page_url}")
+            try:
+                driver.get(page_url)
+                WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, CARD_XPATH)))
+                html = driver.page_source
+                df_cards = extract_cards(html)
+                now_iso = dt.datetime.utcnow().isoformat()
+                new_count = 0
+                # extender con columnas originales como raw_*
+                for _, row in df_cards.iterrows():
+                    url = row.get('url')
+                    if not url:
+                        continue
+                    if url not in urls_seen:
+                        urls_seen.add(url)
+                        aggregated.append({
+                            'source_scraper': meta['source_scraper'],
+                            'website': meta['website'],
+                            'city': meta['city'],
+                            'operation': meta['operation'],
+                            'product': meta['product'],
+                            'listing_url': url,
+                            'collected_at': now_iso,
+                            'raw_descripcion': row.get('descripcion'),
+                            'raw_ubicacion': row.get('ubicacion'),
+                            'raw_precio': row.get('precio'),
+                            'raw_tipo': row.get('tipo'),
+                            'raw_habitaciones': row.get('habitaciones'),
+                            'raw_banos': row.get('baños'),
+                            'raw_estacionamientos': row.get('estacionamientos'),
+                            'raw_superficie': row.get('superficie'),
+                            'raw_codigo': row.get('codigo'),
+                        })
+                        new_count += 1
+                print(f"[cyt:url-mode] Nuevos enlaces página {page}: {new_count}")
+                if new_count == 0:
+                    consecutive_empty += 1
+                else:
+                    consecutive_empty = 0
+                if consecutive_empty >= 2:
+                    print('[cyt:url-mode] 2 páginas seguidas sin nuevos enlaces, fin.')
+                    break
+                time.sleep(2)
+            except Exception as e:
+                print(f"[cyt:url-mode] Error página {page}: {e}")
+                break
+    finally:
+        driver.quit()
 
-    for i in range(90, total_pages + 1):
-        URL = f"{URL_BASE}{i}"
-        print(f"Scrapeando página {i} de {total_pages}")
-        
+    if not aggregated:
+        print('[cyt:url-mode] Sin URLs recolectadas')
+        try:
+            os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        except Exception:
+            pass
+        pd.DataFrame(columns=['source_scraper','website','city','operation','product','listing_url','collected_at']).to_csv(output_file, index=False)
+        return True
+    out_df = pd.DataFrame(aggregated)
+    try:
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+    except Exception:
+        pass
+    if os.path.exists(output_file):
+        try:
+            prev = pd.read_csv(output_file)
+            out_df = pd.concat([prev, out_df], ignore_index=True)
+        except Exception:
+            pass
+    out_df.drop_duplicates(subset=['listing_url'], inplace=True)
+    out_df.to_csv(output_file, index=False, encoding='utf-8')
+    print(f"[cyt:url-mode] Archivo URLs actualizado: {output_file} ({len(out_df)} filas)")
+    return True
+
+def re_sub_results_page(url: str, page: int) -> str:
+    import re
+    # Reemplaza valor tras 'results_page='
+    if 'results_page=' not in url:
+        return url
+    return re.sub(r'(results_page=)\d+', rf'\g<1>{page}', url)
+
+def legacy_run():
+    print('[cyt] Modo legacy (acumulativo)')
+    options = Options()
+    options.add_argument('--headless=new')
+    driver = webdriver.Chrome(options=options)
+    driver.set_page_load_timeout(60)
+    total_pages = 5
+    for i in range(0, total_pages):
+        URL = re_sub_results_page(os.environ.get('SCRAPER_INPUT_URL', '' ) or 'https://www.casasyterrenos.com/jalisco/zapopan/departamentos/venta?desde=0&hasta=1000000000&utm_source=results_page=0', i)
+        print(f"[cyt:legacy] Página {i}")
         try:
             driver.get(URL)
-            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, "//div[contains(@class, 'mx-2') and contains(@class, 'w-[320px]')]")))
+            WebDriverWait(driver, 30).until(EC.presence_of_element_located((By.XPATH, CARD_XPATH)))
             html = driver.page_source
-            df_page = scrape_page_source(html)
-            save(df_page)
+            df_page = extract_cards(html)
+            save_legacy(df_page)
         except Exception as e:
-            print(f"Error en la página {i}: {e}")
-        
+            print(f"[cyt:legacy] Error página {i}: {e}")
+            break
     driver.quit()
-    print("Scraping completado.")
+    return True
 
+def main():
+    mode = os.environ.get('SCRAPER_MODE', 'url')
+    if mode == 'url':
+        return url_mode_collect()
+    return legacy_run()
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
