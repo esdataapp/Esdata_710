@@ -19,8 +19,6 @@ DEFAULT_CSV_PATH = (
 
 def _normalize_key(value: str) -> str:
     """Return a lowercase key suitable for dictionary lookups."""
-    if value is None:
-        return ""
     text = str(value).strip()
     if not text:
         return ""
