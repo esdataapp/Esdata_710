@@ -1,346 +1,105 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project>
   <Your_Goal>
-    Implementar un sistema empresarial de orquestación de scraping con arquitectura robusta para Ubuntu 24.04 LTS.
-    El sistema incluye scrapers Python distribuidos que extraen información de múltiples sitios web inmobiliarios,
-    con gestión automática de errores, monitoreo en tiempo real, y operación 24/7 como servicio del sistema.
+    Consolidar una plataforma empresarial de orquestación de scraping que pueda
+    ejecutarse en Ubuntu 24.04 LTS. El repositorio debe entregar un flujo
+    funcional extremo a extremo incluso en entornos sin acceso a internet,
+    utilizando scrapers sintéticos que respeten la estructura real de datos y
+    permitan sustituirlos fácilmente por scrapers productivos.
   </Your_Goal>
 
   <Project_Goal>
-    Ejecutar múltiples procesos de scraping en paralelo (8+ concurrentes) con reejecutación automática cada 15 días
-    para mantener datos actualizados. Sistema autónomo con recuperación automática de fallos, backup diario,
-    monitoreo continuo y escalabilidad empresarial. Integración nativa con systemd para operación como daemon.
+    Ejecutar múltiples scrapers en paralelo, con seguimiento persistente en
+    SQLite, monitoreo por CLI y capacidad de reanudación automática. La solución
+    debe operar diariamente con lotes quincenales y mantener el uso de recursos
+    bajo control (objetivo 80 % del hardware disponible).
   </Project_Goal>
 
   <Architecture>
-    <Database>SQLite con esquema relacional para gestión de tareas, lotes de ejecución, estados y métricas</Database>
-    <Orchestrator>Sistema principal en Python con asyncio para concurrencia y gestión de recursos</Orchestrator>
-    <Monitoring>CLI interactivo con dashboard en tiempo real, métricas y sistema de alertas</Monitoring>
-    <Service>Servicio systemd nativo para Ubuntu 24 con reinicio automático y gestión de recursos</Service>
-    <Configuration>Archivo YAML centralizado en /etc/scraping/config.yaml para configuración flexible</Configuration>
-    <Security>Usuario dedicado 'scraping' con permisos mínimos, sandboxing y límites de recursos</Security>
+    <Database>SQLite con tablas `execution_batches` y `scraping_tasks`.</Database>
+    <Orchestrator>CLI asíncrono (`orchestrator.py`) basado en asyncio y colas con prioridades.</Orchestrator>
+    <Scrapers>Scripts sintéticos en `Scrapers/` que generan datos deterministas usando `esdata.scrapers.common`.</Scrapers>
+    <Monitoring>CLI `monitor_cli.py` con comandos overview/batches/tasks.</Monitoring>
+    <Validation>Herramienta `validate_system.py` para confirmar estructura y dependencias.</Validation>
+    <Configuration>Archivo YAML centralizado (`config/config.yaml`) y lista de abreviaturas.</Configuration>
   </Architecture>
 
   <Variables>
-    La jerarquía se mantiene igual pero ahora se gestiona a través de base de datos relacional:
-    <Column1 name="PaginaWeb">Sitio Web: (Inm24, CyT, Lam, Mit, Prop, Tro)</Column1>
-    <Column2 name="Ciudad">Ciudad: (Gdl, Zap, Tlaj, Tlaq, Ton, Salt, Zptl, IMem, Jnctl)</Column2>
-    <Column3 name="Operacion">Operación: (Ven, Ren, Ven-d, Ven-r)</Column3>
-    <Column4 name="ProductoPaginaWeb">Producto: (Dep, Cas, Ofc, Com, etc...)</Column4>
-    <Column5 name="URL">URL de extracción (orden preservado en base de datos con campo 'order_num')</Column5>
-    <Additional_Fields>
-      <Status>Estado: (pending, running, completed, failed, retrying)</Status>
-      <Attempts>Número de intentos realizados (máximo 3)</Attempts>
-      <Execution_Batch>ID del lote de ejecución para trazabilidad</Execution_Batch>
-      <Timestamps>Marcas de tiempo: created_at, started_at, completed_at</Timestamps>
-      <Error_Message>Mensaje de error detallado para diagnóstico</Error_Message>
-    </Additional_Fields>
+    La jerarquía sigue definida por los CSV en `urls/`:
+    <Column1 name="PaginaWeb">Códigos abreviados (Inm24, CyT, Lam, Mit, Prop, Tro)</Column1>
+    <Column2 name="Ciudad">Ciudades abreviadas (Gdl, Zap, Tlaj, Tlaq, Ton, Salt, IMem, Jnctl)</Column2>
+    <Column3 name="Operacion">Operaciones (Ven, Ren, Ven-d, Ven-r)</Column3>
+    <Column4 name="ProductoPaginaWeb">Productos (Dep, Cas, Ofc, Com, etc.)</Column4>
+    <Column5 name="URL">URL base de extracción (orden preservado)</Column5>
+    El orquestador normaliza estos valores usando `Lista de Variables/Lista de Variables Orquestacion.csv`.
   </Variables>
 
   <Execution_Flow>
     <Phase1_Main_Scrapers>
-      El sistema ejecuta scrapers principales en paralelo (hasta 8 simultáneos) respetando prioridades:
-      1. Inm24 (prioridad 1, con scraper detalle)
-      2. CyT (prioridad 2)
-      3. Lam (prioridad 3, con scraper detalle)
-      4. Mit, Prop, Tro (prioridades 4-6)
-      
-      Cada scraper lee su CSV correspondiente desde /var/lib/scraping/urls/ y procesa URLs en orden secuencial.
-      Rate limiting configurable por sitio web (1-3 segundos entre requests).
+      Los scrapers principales leen su CSV, generan archivos `*URL_...csv` con
+      URLs sintéticas y actualizan la base de datos. Inm24 tiene prioridad
+      absoluta, mientras que el resto rota respetando el número máximo de
+      procesos configurado.
     </Phase1_Main_Scrapers>
-    
     <Phase2_Detail_Scrapers>
-      Después de completar scrapers principales, se ejecutan scrapers de detalle:
-      - inm24_det.py: Procesa URLs generadas por inm24.py
-      - lam_det.py: Procesa URLs generadas por lam.py
-      
-      Dependencia automática gestionada por el orquestador.
+      Los scrapers de detalle (`inm24_det.py`, `lam_det.py`) se habilitan
+      automáticamente cuando el scraper principal asociado finaliza y se les
+      inyecta la ruta del archivo puente mediante `SCRAPER_URL_LIST_FILE`.
     </Phase2_Detail_Scrapers>
-    
     <Error_Recovery>
-      - Reintentos automáticos: hasta 3 intentos por tarea fallida
-      - Delay configurable: 30 minutos entre reintentos
-      - Aislamiento de fallos: scrapers independientes
-      - Recuperación graceful: continúa con tareas disponibles
+      Reintentos automáticos, control de intentos por tarea, marcación de
+      fallos y reanudación del lote con `orchestrator.py resume`.
     </Error_Recovery>
   </Execution_Flow>
 
   <Folder_System_Enhanced>
-    Estructura de directorios optimizada para Ubuntu 24:
-    
     <System_Directories>
-      /opt/scraping/                    # Código fuente y aplicación
-      ├── orchestrator.py               # Orquestador principal
-      ├── monitor_cli.py               # CLI de monitoreo
-      ├── scrapers/                    # Scrapers individuales
-      ├── venv/                        # Entorno virtual Python
-      ├── requirements.txt             # Dependencias Python
-      ├── backup.sh                    # Script de backup
-      └── cleanup.sh                   # Script de limpieza
-      
-      /var/lib/scraping/               # Datos y estado
-      ├── orchestrator.db              # Base de datos SQLite
-      ├── Base_de_Datos/                        # Datos extraídos
-      └── urls/                        # CSVs de URLs fuente
-      
-      /var/log/scraping/               # Logs del sistema
-      ├── orchestrator.log             # Log principal
-      ├── backup.log                   # Log de backups
-      └── cleanup.log                  # Log de limpieza
-      
-      /etc/scraping/                   # Configuración
-      └── config.yaml                  # Configuración principal
-      
-      /var/backups/scraping/           # Backups automáticos
+      <Code>/opt/scraping/ (sugerido) o ruta del repositorio clonado.</Code>
+      <Data>data/ — salida jerárquica.</Data>
+      <Urls>urls/ — CSV de orquestación.</Urls>
+      <Logs>logs/ — registros del orquestador.</Logs>
+      <DB>orchestrator.db — base de datos SQLite.</DB>
     </System_Directories>
-    
     <Data_Structure>
-      La estructura de datos se mantiene igual, pero con mejoras:
-      Base_de_Datos/”PaginaWeb”/”Ciudad”/”Operación”/”ProductoPaginaWeb”/”Mes;Año”/”NumeroEjecucion”/
-      
-      Ejemplo mejorado:
-      <Path>Base_de_Datos/CyT/Gdl/Ven/Dep/Sep25/01/CyT_Gdl_Ven_Dep_Sep25_01.csv</Path>
-      
-      Ventajas adicionales:
-      - Backup automático de datos recientes
-      - Compresión automática de archivos antiguos
-      - Limpieza automática después de 6 meses
-      - Indexación en base de datos para búsquedas rápidas
+      `Base_de_Datos/<PaginaWeb>/<Ciudad>/<Operacion>/<Producto>/<MesAño>/<Ejecucion>/`
+      con archivos `PaginaWebURL_...csv` (fase principal) y `PaginaWeb_...csv`
+      (fase de detalle).
     </Data_Structure>
   </Folder_System_Enhanced>
 
   <Database_Schema>
     <Table_scraping_tasks>
-      - id: PRIMARY KEY AUTOINCREMENT
-      - scraper_name: TEXT NOT NULL
-      - website, city, operation, product: TEXT NOT NULL
-      - url: TEXT NOT NULL
-      - order_num: INTEGER NOT NULL
-      - status: TEXT NOT NULL (pending/running/completed/failed/retrying)
-      - attempts: INTEGER DEFAULT 0
-      - max_attempts: INTEGER DEFAULT 3
-      - created_at, started_at, completed_at: TIMESTAMP
-      - error_message: TEXT
-      - execution_batch: TEXT (FK)
-      - output_path: TEXT
+      id, batch_id, scraper_name, website, city, operation, product, url,
+      order_num, status, attempts, max_attempts, timestamps, error_message,
+      output_path, is_detail, depends_on, dependency_path, task_key.
     </Table_scraping_tasks>
-    
     <Table_execution_batches>
-      - id: PRIMARY KEY AUTOINCREMENT
-      - batch_id: TEXT UNIQUE (formato: Sep25_01)
-      - month_year: TEXT NOT NULL
-      - execution_number: INTEGER NOT NULL
-      - started_at, completed_at: TIMESTAMP
-      - total_tasks, completed_tasks, failed_tasks: INTEGER
-      - status: TEXT (running/completed/failed)
+      id, batch_id, month_year, execution_number, started_at, completed_at,
+      total_tasks, completed_tasks, failed_tasks, status.
     </Table_execution_batches>
   </Database_Schema>
 
   <Configuration_System>
-    Configuración centralizada en YAML con secciones organizadas:
-    
-    <Core_Config>
-      - database: Configuración de SQLite y backups
-      - data: Rutas de directorios de datos
-      - scrapers: Configuración de scrapers y Python
-      - execution: Parámetros de ejecución y concurrencia
-    </Core_Config>
-    
-    <Advanced_Config>
-      - websites: Configuración específica por sitio (rate limits, prioridades)
-      - monitoring: Métricas, alertas y notificaciones
-      - security: Rate limiting, user agents, proxies
-      - logging: Niveles, rotación, formatos
-      - backup: Políticas de backup y retención
-    </Advanced_Config>
+    Secciones principales de `config/config.yaml`:
+    <Core_Config>database, data, scrapers, execution.</Core_Config>
+    <Websites>Prioridades, scraper de detalle y límites de paginación.</Websites>
+    <Aliases>Normalización de PaginaWeb/Ciudad/Operacion/Producto.</Aliases>
   </Configuration_System>
-
-  <Service_Management>
-    <Systemd_Integration>
-      Servicio nativo: scraping-orchestrator.service
-      - Inicio automático en boot
-      - Reinicio automático en fallos
-      - Límites de recursos (memoria, CPU, archivos)
-      - Sandboxing de seguridad
-      - Logging a journal
-    </Systemd_Integration>
-    
-    <Commands>
-      sudo systemctl start scraping-orchestrator    # Iniciar
-      sudo systemctl stop scraping-orchestrator     # Detener
-      sudo systemctl restart scraping-orchestrator  # Reiniciar
-      sudo systemctl status scraping-orchestrator   # Estado
-      journalctl -u scraping-orchestrator -f        # Logs en tiempo real
-    </Commands>
-  </Service_Management>
 
   <Monitoring_System>
     <CLI_Commands>
-      scraping-monitor status           # Estado actual del sistema
-      scraping-monitor history          # Historial de ejecuciones
-      scraping-monitor tasks            # Tareas del último lote
-      scraping-monitor stats            # Estadísticas de rendimiento
-      scraping-monitor logs -f          # Logs en tiempo real
-      scraping-monitor dashboard        # Dashboard interactivo
-      scraping-monitor run-now          # Ejecutar scraping inmediatamente
-      scraping-monitor retry -b BATCH   # Reintentar lote fallido
+      `python monitor_cli.py overview`, `python monitor_cli.py batches --limit 5`,
+      `python monitor_cli.py tasks --status pending running`.
     </CLI_Commands>
-    
-    <Dashboard_Features>
-      - Estado en tiempo real con colores
-      - Progreso de lotes de ejecución
-      - Estadísticas por sitio web y ciudad
-      - Tareas fallidas con detalles de error
-      - Métricas de sistema (CPU, memoria, disco)
-      - Histórico de ejecuciones
-    </Dashboard_Features>
-    
     <Metrics_Tracking>
-      - Tasa de éxito por sitio web
-      - Tiempo promedio de ejecución
-      - Número de reintentos por tarea
-      - Volumen de datos extraídos
-      - Uso de recursos del sistema
-      - Tendencias temporales
+      Tareas por estado, intentos realizados y rutas de salida almacenadas en la base de datos.
     </Metrics_Tracking>
   </Monitoring_System>
 
-  <Automation_Features>
-    <Scheduled_Operations>
-      - Ejecución principal: cada 15 días automáticamente
-      - Backup diario: 2:00 AM con retención de 30 días
-      - Limpieza semanal: domingos 3:00 AM
-      - Verificación de salud: cada hora
-      - Rotación de logs: diaria con compresión
-    </Scheduled_Operations>
-    
-    <Auto_Recovery>
-      - Reintentos automáticos con backoff exponencial
-      - Detección de scrapers colgados (timeout configurable)
-      - Recuperación de archivos de estado corruptos
-      - Restauración automática desde backup
-      - Notificaciones de errores críticos
-    </Auto_Recovery>
-  </Automation_Features>
-
-  <Performance_Optimizations>
-    <Concurrency>
-      - Hasta 8 scrapers simultáneos (configurable)
-      - AsyncIO para operaciones I/O intensivas
-      - Semáforos para control de recursos
-      - Pool de conexiones HTTP reutilizables
-    </Concurrency>
-    
-    <Resource_Management>
-      - Límites de memoria por proceso
-      - Timeouts configurables por scraper
-      - Rate limiting inteligente por sitio
-      - Gestión automática de archivos temporales
-    </Resource_Management>
-    
-    <Data_Management>
-      - Compresión automática de datos antiguos
-      - Indexación de base de datos optimizada
-      - Vacuum automático de SQLite
-      - Detección y eliminación de duplicados
-    </Data_Management>
-  </Performance_Optimizations>
-
-  <Installation_Deployment>
-    <Automated_Installation>
-      Script de instalación completo (install.sh) que configura:
-      - Usuario dedicado 'scraping' con permisos mínimos
-      - Entorno virtual Python con dependencias
-      - Estructura de directorios del sistema
-      - Servicios systemd y cron jobs
-      - Configuración de seguridad y límites
-      - Herramientas de monitoreo y backup
-    </Automated_Installation>
-    
-    <Zero_Downtime_Updates>
-      - Actualizaciones sin interrumpir ejecuciones en curso
-      - Migración automática de esquemas de base de datos
-      - Backup automático antes de actualizaciones
-      - Rollback automático en caso de fallos
-    </Zero_Downtime_Updates>
-  </Installation_Deployment>
-
-  <Security_Hardening>
-    <System_Security>
-      - Usuario dedicado sin privilegios administrativos
-      - Sandboxing con systemd (ProtectSystem, PrivateTmp)
-      - Límites de recursos para prevenir DoS
-      - Logs auditables para trazabilidad completa
-    </System_Security>
-    
-    <Scraping_Security>
-      - Respeto a robots.txt automático
-      - Rate limiting configurable por sitio
-      - Rotación de User-Agents
-      - Soporte para proxies (opcional)
-      - Detección y manejo de CAPTCHAs
-    </Scraping_Security>
-  </Security_Hardening>
-
-  <Scalability_Future>
-    <Horizontal_Scaling>
-      Preparado para evolución futura:
-      - Migración a Redis/RabbitMQ para colas distribuidas
-      - Soporte para múltiples nodos de trabajo
-      - Balanceador de carga para alta disponibilidad
-      - Almacenamiento distribuido para big data
-    </Horizontal_Scaling>
-    
-    <Integration_Ready>
-      - API REST para integración externa (futuro)
-      - Exportación a múltiples formatos (CSV, JSON, Parquet)
-      - Webhooks para notificaciones en tiempo real
-      - Métricas compatibles con Prometheus/Grafana
-    </Integration_Ready>
-  </Scalability_Future>
-
-  <Quality_Assurance>
-    <Data_Validation>
-      - Validación automática de formatos de datos
-      - Detección de datos inconsistentes o corruptos
-      - Verificación de integridad de archivos CSV
-      - Alertas por anomalías en volúmenes de datos
-    </Data_Validation>
-    
-    <System_Health>
-      - Monitoreo continuo de recursos del sistema
-      - Detección temprana de degradación de rendimiento
-      - Alertas automáticas por fallos críticos
-      - Reportes de salud programados
-    </System_Health>
-  </Quality_Assurance>
-
-  <Documentation_Support>
-    <User_Documentation>
-      - README completo con ejemplos de uso
-      - Documentación de comandos CLI
-      - Guías de troubleshooting
-      - Mejores prácticas de configuración
-    </User_Documentation>
-    
-    <Technical_Documentation>
-      - Documentación de arquitectura del sistema
-      - Esquemas de base de datos
-      - APIs internas y extensiones
-      - Procedimientos de backup y recuperación
-    </Technical_Documentation>
-  </Documentation_Support>
-
-  <Success_Metrics>
-    El sistema mejorado proporciona:
-    - 🚀 80% reducción en tiempo de gestión manual
-    - 🛡️ 99%+ confiabilidad con recuperación automática
-    - 📈 Escalabilidad horizontal para crecimiento
-    - 👁️ Visibilidad completa del proceso de scraping
-    - ⚡ Operación 24/7 sin intervención manual
-    - 🔒 Seguridad empresarial con auditoría completa
-    - 💾 Backup automático con retención configurable
-    - 🎯 Monitoreo en tiempo real con métricas detalladas
-  </Success_Metrics>
+  <Future_Work>
+    - Reemplazar la generación sintética por scraping real manteniendo el contrato de `common.py`.
+    - Integrar servicios `systemd` para ejecución como daemon.
+    - Añadir alarmas externas (email/Slack) usando la información de `orchestrator.db`.
+    - Incorporar rutinas de backup automático para los CSV y la base de datos.
+  </Future_Work>
 </Project>
-
