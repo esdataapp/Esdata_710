@@ -1,0 +1,9 @@
+﻿EJEMPLO DE COMO SE COMBINAN LAS VARIABLES DE LA ORQUESTACION PARA CREAR NOMBRES DE CSV Y CARPETAS,,,,,,,
+,,,,,,,
+PaginaWeb,Ciudad,Operacion,ProductoPaginaWeb,Mes Scrap,Año Scrap,Scrap del Mes,Folde/CSV name (Importante)
+Inm24,Zap,Ven,BodC,Sep,25,1er,Inm24_Zap_Ven_BodC_Sep25_01.csv
+Inm24,Gdl,Ren,BodC,Oct,25,2do,Inm24_Gdl_Ren_BodC_Oct25_02.csv
+Inm24,Tlaq,Ven,Cas,Sep,26,2do,Inm24_Tlaq_Ven_Cas_Sep26_02.csv
+Inm24,Zap,Ren,Dep,Ene,25,2do,Inm24_Zap_Ren_Dep_Ene25_02.csv
+Inm24,Gdl,Ven,Dep,Sep,25,1er,Inm24_Gdl_Ven_Dep_Sep25_01.csv
+Inm24,Tlaq,Ven,Ofc,Feb,27,1er,Inm24_Tlaq_Ven_Ofc_Feb27_01.csv

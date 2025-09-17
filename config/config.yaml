@@ -1,0 +1,176 @@
+# Configuración del Sistema de Orquestación de Scraping - Windows
+# Adaptado para la carpeta Esdata 710
+
+# Configuración de base de datos
+database:
+  path: "C:\\Users\\criss\\Desktop\\Esdata 710\\orchestrator.db"
+  backup_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\backups"
+  backup_retention_days: 30
+
+# Configuración de directorios
+data:
+  base_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\data"
+  urls_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\urls"
+  logs_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\logs"
+  temp_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\temp"
+
+# Configuración de scrapers
+scrapers:
+  path: "C:\\Users\\criss\\Desktop\\Esdata 710\\Scrapers"
+  python_executable: "python"
+  timeout_minutes: 30
+  memory_limit_mb: 512
+
+# Configuración de ejecución
+execution:
+  max_parallel_scrapers: 6  # Ajustado para Windows
+  retry_delay_minutes: 30
+  execution_interval_days: 15
+  rate_limit_delay_seconds: 3  # Más conservador para Windows
+  max_retry_attempts: 3
+  enable_auto_recovery: true
+  
+# Configuración de monitoreo
+monitoring:
+  enable_metrics: true
+  enable_alerts: true
+  check_interval_seconds: 300
+
+# Configuración de sitios web
+websites:
+  Inm24:
+    priority: 1
+    has_detail_scraper: true
+    base_url: "https://inmuebles24.com"
+    rate_limit_seconds: 4
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    max_pages_per_session: 100
+    
+  CyT:
+    priority: 2
+    has_detail_scraper: false
+    base_url: "https://casasyterrenos.com"
+    rate_limit_seconds: 3
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    max_pages_per_session: 150
+    
+  Lam:
+    priority: 3
+    has_detail_scraper: true
+    base_url: "https://lamudi.com.mx"
+    rate_limit_seconds: 3
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    max_pages_per_session: 120
+    
+  Mit:
+    priority: 4
+    has_detail_scraper: false
+    base_url: "https://mitula.com.mx"
+    rate_limit_seconds: 2
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    max_pages_per_session: 80
+    
+  Prop:
+    priority: 5
+    has_detail_scraper: false
+    base_url: "https://propiedades.com"
+    rate_limit_seconds: 3
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    max_pages_per_session: 100
+    
+  Tro:
+    priority: 6
+    has_detail_scraper: false
+    base_url: "https://trovit.com.mx"
+    rate_limit_seconds: 2
+    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    max_pages_per_session: 90
+
+# Configuración de ciudades
+cities:
+  - code: "Gdl"
+    name: "Guadalajara"
+    enabled: true
+  - code: "Zap" 
+    name: "Zapopan"
+    enabled: true
+  - code: "Tlaj"
+    name: "Tlajomulco"
+    enabled: true
+  - code: "Tlaq"
+    name: "Tlaquepaque"
+    enabled: true
+  - code: "Ton"
+    name: "Tonalá"
+    enabled: true
+  - code: "Salt"
+    name: "El Salto"
+    enabled: true
+
+# Configuración de operaciones
+operations:
+  - code: "Ven"
+    name: "Venta"
+    enabled: true
+  - code: "Ren"
+    name: "Renta"
+    enabled: true
+  - code: "Ven-d"
+    name: "Venta Departamentos"
+    enabled: true
+  - code: "Ven-r"
+    name: "Venta Residencial"
+    enabled: false
+
+# Configuración de productos
+products:
+  - code: "Dep"
+    name: "Departamentos"
+    enabled: true
+  - code: "Cas"
+    name: "Casas"
+    enabled: true
+  - code: "Ofc"
+    name: "Oficinas"
+    enabled: false
+  - code: "Com"
+    name: "Comercial"
+    enabled: false
+
+# Configuración de datos
+data_processing:
+  enable_data_validation: true
+  enable_duplicate_detection: true
+  enable_data_cleaning: true
+  export_formats: ["csv", "json"]
+  compress_old_files: false  # Deshabilitado en Windows por simplicidad
+  
+# Configuración de backup
+backup:
+  enable_automated_backup: true
+  retention_policy:
+    daily: 7
+    weekly: 4
+    monthly: 3
+
+# Configuración de seguridad
+security:
+  enable_rate_limiting: true
+  respect_robots_txt: true
+  rotate_user_agents: true
+  use_proxy_rotation: false
+  max_requests_per_minute: 20  # Más conservador
+  
+# Configuración de logging
+logging:
+  level: "INFO"
+  max_file_size_mb: 50
+  backup_count: 3
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Variables de entorno para Windows
+environment:
+  development: false
+  debug_mode: true  # Habilitado para desarrollo
+  enable_profiling: false
+  max_memory_usage_mb: 1024

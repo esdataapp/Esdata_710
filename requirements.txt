@@ -1,0 +1,200 @@
+# ============================================================================
+# SISTEMA DE ORQUESTACIÓN DE SCRAPING INMOBILIARIO
+# Requirements.txt - Dependencias de Python
+# ============================================================================
+# 
+# Instalación:
+#   pip install -r requirements.txt
+#
+# Actualización:
+#   pip install -r requirements.txt --upgrade
+#
+# Verificación:
+#   pip freeze > installed_packages.txt
+# ============================================================================
+
+# ============================================================================
+# DEPENDENCIAS CORE - FUNDAMENTALES
+# ============================================================================
+
+# Manipulación de datos
+pandas>=2.1.0,<3.0.0              # Análisis y manipulación de datos
+numpy>=1.24.0,<2.0.0               # Computación numérica
+openpyxl>=3.1.0                    # Soporte para archivos Excel
+
+# Configuración y serialización
+pyyaml>=6.0,<7.0                   # Parsing de archivos YAML
+python-dateutil>=2.8.2             # Utilidades para fechas
+pathlib2>=2.3.7 ; python_version < "3.4"  # Soporte pathlib para Python antiguo
+
+# Base de datos
+sqlite3                            # Base de datos SQLite (incluida en Python)
+
+# ============================================================================
+# DEPENDENCIAS DE SCRAPING - WEB SCRAPING
+# ============================================================================
+
+# HTTP y requests
+requests>=2.31.0,<3.0.0           # Cliente HTTP
+urllib3>=1.26.0,<3.0.0            # Cliente HTTP de bajo nivel
+httpx>=0.25.0                     # Cliente HTTP asíncrono alternativo
+
+# Parsing HTML/XML
+beautifulsoup4>=4.12.0,<5.0.0     # Parser HTML/XML
+lxml>=4.9.0,<5.0.0                # Parser XML rápido
+html5lib>=1.1                     # Parser HTML5 puro Python
+
+# Selenium WebDriver
+selenium>=4.15.0,<5.0.0           # Automatización de navegadores web
+seleniumbase>=4.21.0              # Framework extendido de Selenium
+webdriver-manager>=4.0.0          # Gestión automática de drivers
+
+# User agents y proxy
+fake-useragent>=1.4.0             # Rotación de user agents
+requests-html>=0.10.0             # Requests con soporte JavaScript
+
+# ============================================================================
+# DEPENDENCIAS DE SISTEMA - INFRAESTRUCTURA
+# ============================================================================
+
+# Logging y monitoreo
+colorama>=0.4.6                   # Colores en terminal Windows
+rich>=13.7.0                      # Terminal rica y dashboard
+tqdm>=4.66.0                      # Barras de progreso
+
+# CLI y interfaz de usuario
+click>=8.1.7                      # Framework CLI
+tabulate>=0.9.0                   # Formateo de tablas
+prompt-toolkit>=3.0.0             # Toolkit para CLI interactivos
+
+# Scheduling y tareas
+schedule>=1.2.0                   # Programación de tareas
+APScheduler>=3.10.0               # Scheduler avanzado
+
+# ============================================================================
+# DEPENDENCIAS DE UTILIDADES - HELPERS
+# ============================================================================
+
+# Validaciones y utilidades
+validators>=0.22.0                # Validación de URLs y datos
+retrying>=1.3.4                   # Reintentos con backoff
+python-dotenv>=1.0.0              # Variables de entorno desde archivos
+configparser>=5.3.0               # Parser de archivos de configuración
+
+# Sistema y archivos
+psutil>=5.9.0                     # Información del sistema
+watchdog>=3.0.0                   # Monitoreo de archivos
+send2trash>=1.8.0                 # Envío seguro a papelera
+
+# Compresión y archivos
+zipfile38>=0.0.3 ; python_version < "3.8"  # Soporte zipfile para Python antiguo
+
+# ============================================================================
+# DEPENDENCIAS DE DESARROLLO - TESTING Y QA
+# ============================================================================
+
+# Testing framework
+pytest>=7.4.0                     # Framework de testing
+pytest-cov>=4.1.0                 # Cobertura de código
+pytest-mock>=3.11.0               # Mocking para tests
+pytest-xdist>=3.3.0               # Tests paralelos
+
+# Code quality
+flake8>=6.0.0                     # Linting de código
+black>=23.7.0                     # Formateo automático
+isort>=5.12.0                     # Ordenamiento de imports
+mypy>=1.5.0                       # Type checking
+
+# Documentation
+sphinx>=7.1.0                     # Generación de documentación
+sphinx-rtd-theme>=1.3.0           # Tema Read the Docs
+
+# ============================================================================
+# DEPENDENCIAS OPCIONALES - CARACTERÍSTICAS AVANZADAS
+# ============================================================================
+
+# Async support (para desarrollo futuro)
+aiohttp>=3.8.0                    # Cliente HTTP asíncrono
+asyncio>=3.4.3                    # Programación asíncrona
+aiofiles>=23.2.0                  # Operaciones de archivos asíncronas
+
+# Database alternatives (para escalabilidad futura)
+sqlalchemy>=2.0.0                 # ORM para bases de datos
+alembic>=1.12.0                   # Migraciones de base de datos
+
+# Monitoring and metrics (para producción)
+prometheus-client>=0.17.0         # Métricas para Prometheus
+statsd>=4.0.0                     # Envío de métricas StatsD
+
+# Notifications (para alertas)
+python-telegram-bot>=20.0         # Bot de Telegram
+slack-sdk>=3.22.0                 # SDK de Slack
+
+# ============================================================================
+# DEPENDENCIAS DE COMPATIBILIDAD - WINDOWS
+# ============================================================================
+
+# Windows specific
+pywin32>=306 ; sys_platform == "win32"     # APIs de Windows
+wmi>=1.5.1 ; sys_platform == "win32"       # WMI para información del sistema
+
+# ============================================================================
+# DEPENDENCIAS DE DESARROLLO LOCAL
+# ============================================================================
+
+# Jupyter (para análisis de datos interactivo)
+jupyter>=1.0.0                    # Jupyter notebooks
+matplotlib>=3.7.0                 # Visualización de datos
+seaborn>=0.12.0                   # Visualización estadística
+
+# ============================================================================
+# VERSIONES MÍNIMAS POR COMPATIBILIDAD
+# ============================================================================
+
+# Python version requirement
+# python_requires = ">=3.8"
+
+# Specific version locks for stability
+certifi>=2023.7.22               # Certificados SSL actualizados
+charset-normalizer>=3.2.0        # Normalización de charset
+idna>=3.4                        # Internationalización de dominios
+typing-extensions>=4.7.0         # Extensiones de typing
+
+# ============================================================================
+# NOTAS DE INSTALACIÓN
+# ============================================================================
+
+# Para instalar solo dependencias core:
+#   pip install pandas pyyaml beautifulsoup4 selenium requests colorama tabulate
+
+# Para entorno de desarrollo completo:
+#   pip install -r requirements.txt
+
+# Para actualizar todas las dependencias:
+#   pip install -r requirements.txt --upgrade
+
+# Para crear entorno virtual:
+#   python -m venv venv
+#   venv\Scripts\activate  (Windows)
+#   pip install -r requirements.txt
+
+# ============================================================================
+# TROUBLESHOOTING
+# ============================================================================
+
+# Si hay problemas con lxml en Windows:
+#   pip install --only-binary=lxml lxml
+
+# Si hay problemas con Selenium:
+#   pip install seleniumbase
+#   sbase install chromedriver
+
+# Si hay problemas de memoria con pandas:
+#   pip install "pandas[performance]"
+
+# Para verificar versiones instaladas:
+#   pip list | findstr "pandas\|selenium\|beautifulsoup4"
+
+# ============================================================================
+# FIN DEL ARCHIVO
+# ============================================================================

@@ -1,0 +1,105 @@
+﻿1. LISTA DE VARIABLES PARA LA ORQUESTACION DE LOS SCRAPERS,
+,
+1. PaginaWeb,Name
+Inmuebles24,Inm24
+Casas y Terrenos,CyT
+Lamudi,Lam
+Mitula,Mit
+Propiedades,Prop
+Trovit,Tro
+,
+2. Ciudad,Name
+El Salto,Salt
+Guadalajara,Gdl
+Ixtlahuacan de los Membrillos,IMem
+Juanacatlan,Jnctl
+Tlajomulco de Zuñiga,Tlaj
+San Pedro Tlaquepaque,Tlaq
+Tonala,Ton
+Zapopan,Zap
+Zapotlanejo,Zptl
+,
+3. Operacion,Name
+venta,Ven
+Comprar,Ven
+renta,Ren
+Remate,Ven-r
+Venta de Desarrollo H o V,Ven-d
+,
+4. ProductoPaginaWeb,Name
+Ãtico,Atc
+Bodega,Bod
+Bodegas,Bod
+Bodegas comerciales,BodC
+Bodegas Industriales,BodI
+Bungalow,Bung
+Casa,Cas
+Casa en condominio,CasC
+Casa en Fraccionamiento,CasF
+Casa uso de suelo,CasU
+Casas,Cas
+Casas en condominio,CasC
+Condominio Horizontal,CasH
+Consultorios,Cons
+Cuarto,Cuar
+Cuartos,Cuar
+DÃºplex,Dupl
+Departamento,Dep
+Departamento compartido,DepC
+Departamentos,Dep
+Desarrollo horizontal,DepH
+Desarrollo horizontal/vertical,DepD
+Desarrollo vertical,DepV
+Desarrollos,Desr
+DesvÃ¡n,Desv
+Doctor office,OfcD
+Edificio,Edf
+Edificios,Edf
+Estudio,Estd
+Hacienda,Hac
+Hotel,Hot
+Huerta,Huer
+Inmueble productivo urbano,IPU
+Local Comercial,LocC
+Local en centro comercial,LocCP
+Locales,Loc
+Locales comerciales,LocC
+Locales en Centros Comerciales,LocCP
+Locales Retail,LocR
+Nave industrial,NavI
+Naves Industriales,NavI
+Naves/Bodegas,NavB
+Oficina,Ofc
+Oficinas,Ofc
+Parcela,Parc
+Penthouse,Penth
+Quinta,Quin
+Rancho,Ranc
+Ranchos,Ranc
+Terreno,Terr
+Terreno comercial,TerrC
+Terreno industrial,TerrI
+Terrenos,Terr
+Terrenos Comerciales,TerrC
+Terrenos Habitacionales,TerrH
+Terrenos Industriales,TerrI
+Villa,Vill
+,
+5. Meses,Name
+Enero,Ene
+Febrero,Feb
+Marzo,Mar
+Abril,Abr
+Mayo,May
+Junio,Jun
+Julio,Jul
+Agosto,Ago
+Septiembre,Sep
+Octubre,Oct
+Noviembre,Nov
+Diciembre,Dic
+,
+6. Año,Name
+2025,25
+2026,26
+2027,27
