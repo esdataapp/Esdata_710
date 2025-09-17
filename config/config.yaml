@@ -17,7 +17,7 @@ data:
 # Configuración de scrapers
 scrapers:
   path: "Scrapers"  # Relativo al directorio del proyecto
-  python_executable: "/home/esdata/Documents/GitHub/Esdata_710/.venv/bin/python3"  # Usar entorno virtual con python3
+  python_executable: "python3"  # Ejecutar con el intérprete disponible en el entorno actual
   timeout_minutes: 30
   memory_limit_mb: 512
 
@@ -29,8 +29,8 @@ execution:
   rate_limit_delay_seconds: 2  # Más rápido en Linux
   max_retry_attempts: 3
   enable_auto_recovery: true
-  single_url_task_per_scraper: true  # Limitar a 1 URL base por scraper; el scraper pagina internamente
-  include_scrapers: ["inm24", "lam", "cyt", "mit"]
+  single_url_task_per_scraper: false  # Procesar todas las filas del CSV en orden
+  include_scrapers: ["inm24", "lam", "cyt", "mit", "prop", "tro"]
   
 # Configuración de monitoreo
 monitoring:
@@ -162,6 +162,61 @@ security:
   rotate_user_agents: true
   use_proxy_rotation: false
   max_requests_per_minute: 30  # Más agresivo en Linux
+
+# Alias y normalización de variables provenientes de los CSV de URLs
+aliases:
+  websites:
+    inmuebles24: Inm24
+    inmuebles_24: Inm24
+    inmuebles-24: Inm24
+    casasyterrenos: CyT
+    casas_y_terrenos: CyT
+    casas-y-terrenos: CyT
+    lamudi: Lam
+    lamudi.com.mx: Lam
+    mitula: Mit
+    mitula.com.mx: Mit
+    propiedades.com: Prop
+    propiedades: Prop
+    trovit: Tro
+    trovit.com.mx: Tro
+  cities:
+    guadalajara: Gdl
+    zapopan: Zap
+    tlajomulco: Tlaj
+    tlaquepaque: Tlaq
+    tonala: Ton
+    el_salto: Salt
+    salto: Salt
+    ixtlahuacan_de_los_membrillos: IMem
+    ixtlahuacan: IMem
+    juanacatlan: Jnctl
+    juanacatlán: Jnctl
+  operations:
+    renta: Ren
+    rentar: Ren
+    rent: Ren
+    alquiler: Ren
+    arrendar: Ren
+    venta: Ven
+    vender: Ven
+    ven: Ven
+    "venta_departamentos": Ven-d
+    "venta-departamentos": Ven-d
+  products:
+    casas: Cas
+    casa: Cas
+    departamentos: Dep
+    departamento: Dep
+    oficinas: Ofc
+    oficina: Ofc
+    comercial: Com
+    comerciales: Com
+    locales: Com
+    edificios: Edif
+    edificio: Edif
+    bodegas: Bod
+    bodegas_comerciales: BodCom
 
 # Configuración de almacenamiento SQL heterogéneo
 data_storage:

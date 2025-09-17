@@ -61,9 +61,13 @@ class ScraperAdapter:
             os.environ['SCRAPER_OUTPUT_FILE'] = str(abs_output_file)
             os.environ['SCRAPER_BASE_DIR'] = str(self.base_dir)
             os.environ['SCRAPER_WEBSITE'] = str(kwargs.get('website', ''))
+            os.environ['SCRAPER_WEBSITE_CODE'] = str(kwargs.get('website_code', kwargs.get('website', '')))
             os.environ['SCRAPER_CITY'] = str(kwargs.get('city', ''))
+            os.environ['SCRAPER_CITY_CODE'] = str(kwargs.get('city_code', kwargs.get('city', '')))
             os.environ['SCRAPER_OPERATION'] = str(kwargs.get('operation', ''))
+            os.environ['SCRAPER_OPERATION_CODE'] = str(kwargs.get('operation_code', kwargs.get('operation', '')))
             os.environ['SCRAPER_PRODUCT'] = str(kwargs.get('product', ''))
+            os.environ['SCRAPER_PRODUCT_CODE'] = str(kwargs.get('product_code', kwargs.get('product', '')))
             os.environ['SCRAPER_BATCH_ID'] = str(kwargs.get('batch_id', ''))
             os.environ['SCRAPER_INPUT_URL'] = url or ''
             # Limite de paginas (inyectado por orquestador segun sitio/config)
@@ -145,10 +149,23 @@ class ScraperAdapter:
             
             # Buscar el archivo de URLs del scraper principal
             base_scraper = scraper_name.replace('_det', '')
-            url_pattern = f"{base_scraper.upper()}URL_*.csv"
-            
-            url_files = list(output_file.parent.glob(url_pattern))
-            
+            patterns = []
+            website_code = kwargs.get('website_code') or os.environ.get('SCRAPER_WEBSITE_CODE')
+            website_raw = kwargs.get('website') or os.environ.get('SCRAPER_WEBSITE')
+            if website_code:
+                patterns.append(f"{website_code}URL_*.csv")
+            if website_raw and website_raw != website_code:
+                patterns.append(f"{website_raw}URL_*.csv")
+            patterns.append(f"{base_scraper.upper()}URL_*.csv")
+            patterns.append(f"{base_scraper}URL_*.csv")
+
+            url_files = []
+            for pattern in patterns:
+                matches = list(output_file.parent.glob(pattern))
+                if matches:
+                    url_files = matches
+                    break
+
             if not url_files:
                 logger.warning(f"No se encontró archivo de URLs para {scraper_name}")
                 # Crear placeholder
