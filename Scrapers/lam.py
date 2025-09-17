@@ -8,12 +8,34 @@ Refactor para integrarse al orquestador:
 Columnas estándar: source_scraper, website, city, operation, product, listing_url, collected_at
 """
 from __future__ import annotations
+
 import os
+import sys
 import time
 import datetime as dt
+from pathlib import Path
+
 import pandas as pd
 from bs4 import BeautifulSoup
 from seleniumbase import Driver
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.append(str(REPO_ROOT))
+
+from abbreviation_utils import get_resolver
+
+ABBREVIATIONS = get_resolver(strict=True)
+
+
+def _clean_value(value) -> str:
+    if pd.isna(value):
+        return ""
+    return str(value).strip()
+
+
+def _env_abbreviation(env_var: str, context: str) -> str:
+    return ABBREVIATIONS.to_abbreviation(os.environ.get(env_var, ''), context=context)
 
 DDIR = 'data/'
 
@@ -33,10 +55,19 @@ def resolve_base_url(scraper_name: str = 'lam') -> str | None:
         if os.path.exists(path):
             try:
                 df = pd.read_csv(path)
-                w = os.environ.get('SCRAPER_WEBSITE', '')
-                c = os.environ.get('SCRAPER_CITY', '')
-                o = os.environ.get('SCRAPER_OPERATION', '')
-                p = os.environ.get('SCRAPER_PRODUCT', '')
+                for column in ['PaginaWeb', 'Ciudad', 'Operacion', 'ProductoPaginaWeb']:
+                    if column in df.columns:
+                        df[column] = df[column].apply(
+                            lambda v, col=column: ABBREVIATIONS.to_abbreviation(
+                                _clean_value(v), context=col
+                            )
+                        )
+
+                w = _env_abbreviation('SCRAPER_WEBSITE', 'PaginaWeb')
+                c = _env_abbreviation('SCRAPER_CITY', 'Ciudad')
+                o = _env_abbreviation('SCRAPER_OPERATION', 'Operacion')
+                p = _env_abbreviation('SCRAPER_PRODUCT', 'ProductoPaginaWeb')
+
                 # Columnas esperadas: PaginaWeb, Ciudad, Operacion, ProductoPaginaWeb, URL
                 mask = (
                     (df['PaginaWeb'].astype(str) == w) &
@@ -122,10 +153,10 @@ def url_mode_collect():
         return False
     meta = {
         'source_scraper': 'lam',
-        'website': os.environ.get('SCRAPER_WEBSITE', 'Lam'),
-        'city': os.environ.get('SCRAPER_CITY', ''),
-        'operation': os.environ.get('SCRAPER_OPERATION', ''),
-        'product': os.environ.get('SCRAPER_PRODUCT', ''),
+        'website': _env_abbreviation('SCRAPER_WEBSITE', 'PaginaWeb') or 'Lam',
+        'city': _env_abbreviation('SCRAPER_CITY', 'Ciudad'),
+        'operation': _env_abbreviation('SCRAPER_OPERATION', 'Operacion'),
+        'product': _env_abbreviation('SCRAPER_PRODUCT', 'ProductoPaginaWeb'),
         'batch_id': os.environ.get('SCRAPER_BATCH_ID', '')
     }
     # Límite de páginas configurable

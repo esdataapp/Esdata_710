@@ -37,7 +37,11 @@ class ScraperAdapter:
         try:
             # Cambiar al directorio de scrapers
             os.chdir(self.scrapers_dir)
-            
+
+            # Asegurar que el repositorio raíz esté disponible para imports compartidos
+            if str(self.base_dir) not in sys.path:
+                sys.path.insert(0, str(self.base_dir))
+
             # Importar el módulo del scraper
             spec = importlib.util.spec_from_file_location(scraper_name, scraper_path)
             if spec is None:
@@ -145,10 +149,14 @@ class ScraperAdapter:
             
             # Buscar el archivo de URLs del scraper principal
             base_scraper = scraper_name.replace('_det', '')
-            url_pattern = f"{base_scraper.upper()}URL_*.csv"
-            
+            website_code = kwargs.get('website') or base_scraper
+            url_pattern = f"{website_code}URL_*.csv"
+
             url_files = list(output_file.parent.glob(url_pattern))
-            
+            if not url_files:
+                url_pattern_upper = f"{website_code.upper()}URL_*.csv"
+                url_files = list(output_file.parent.glob(url_pattern_upper))
+
             if not url_files:
                 logger.warning(f"No se encontró archivo de URLs para {scraper_name}")
                 # Crear placeholder

@@ -17,7 +17,7 @@ data:
 # Configuración de scrapers
 scrapers:
   path: "Scrapers"  # Relativo al directorio del proyecto
-  python_executable: "/home/esdata/Documents/GitHub/Esdata_710/.venv/bin/python3"  # Usar entorno virtual con python3
+  python_executable: "python3"  # Ejecutable genérico para entornos locales
   timeout_minutes: 30
   memory_limit_mb: 512
 
@@ -29,7 +29,7 @@ execution:
   rate_limit_delay_seconds: 2  # Más rápido en Linux
   max_retry_attempts: 3
   enable_auto_recovery: true
-  single_url_task_per_scraper: true  # Limitar a 1 URL base por scraper; el scraper pagina internamente
+  single_url_task_per_scraper: false  # Permitir que la orquestación recorra todas las filas del CSV
   include_scrapers: ["inm24", "lam", "cyt", "mit"]
   
 # Configuración de monitoreo

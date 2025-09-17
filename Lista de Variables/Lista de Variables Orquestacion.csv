@@ -1,49 +1,35 @@
-﻿1. LISTA DE VARIABLES PARA LA ORQUESTACION DE LOS SCRAPERS,
-,
-1. PaginaWeb,Name
-Inmuebles24,Inm24
-Casas y Terrenos,CyT
-Lamudi,Lam
-Mitula,Mit
-Propiedades,Prop
-Trovit,Tro
-,
-2. Ciudad,Name
-El Salto,Salt
-Guadalajara,Gdl
-Ixtlahuacan de los Membrillos,IMem
-Juanacatlan,Jnctl
-Tlajomulco de Zuñiga,Tlaj
-San Pedro Tlaquepaque,Tlaq
-Tonala,Ton
-Zapopan,Zap
-Zapotlanejo,Zptl
-,
-3. Operacion,Name
-venta,Ven
-Comprar,Ven
-renta,Ren
-Remate,Ven-r
-Venta de Desarrollo H o V,Ven-d
-,
-4. ProductoPaginaWeb,Name
-Ãtico,Atc
+Variable,Abreviatura
 Bodega,Bod
 Bodegas,Bod
+Bodegas Comerciales,BodC
 Bodegas comerciales,BodC
 Bodegas Industriales,BodI
+Bodegas industriales,BodI
 Bungalow,Bung
 Casa,Cas
+Casa en Condominio,CasC
 Casa en condominio,CasC
 Casa en Fraccionamiento,CasF
+Casa en fraccionamiento,CasF
 Casa uso de suelo,CasU
+casa y terrenos,CyT
 Casas,Cas
+Casas en Condominio,CasC
 Casas en condominio,CasC
+Casas y Terrenos,CyT
+Casas y terrenos,CyT
+Casas_y_Terrenos,CyT
+Casas_y_terrenos,CyT
+casas_y_terrenos,CyT
+Casas_y_terrenos.com,CyT
+compra,Ven
+Comprar,Ven
 Condominio Horizontal,CasH
 Consultorios,Cons
 Cuarto,Cuar
 Cuartos,Cuar
-DÃºplex,Dupl
+CyT,CyT
+Dep,Dep
 Departamento,Dep
 Departamento compartido,DepC
 Departamentos,Dep
@@ -51,21 +37,52 @@ Desarrollo horizontal,DepH
 Desarrollo horizontal/vertical,DepD
 Desarrollo vertical,DepV
 Desarrollos,Desr
+Desván,Desv
 DesvÃ¡n,Desv
 Doctor office,OfcD
+DÃºplex,Dupl
+Dúplex,Dupl
 Edificio,Edf
 Edificios,Edf
+El Salto,Salt
 Estudio,Estd
+GDL,Gdl
+Gdl,Gdl
+Guadalajara,Gdl
+guadalajara,Gdl
 Hacienda,Hac
 Hotel,Hot
 Huerta,Huer
+IMem,IMem
+Inm24,Inm24
 Inmueble productivo urbano,IPU
+Inmuebles24,Inm24
+inmuebles24,Inm24
+Ixtlahuacan de los Membrillos,IMem
+IxtlahuacÁn de los Membrillos,IMem
+Ixtlahuacán de los Membrillos,IMem
+Ixtlahuacán de los membrillos,IMem
+IxtlahuacÃ¡n de los Membrillos,IMem
+IxtlahuacÃ¡n de los membrillos,IMem
+Jnctl,Jnctl
+Juanacatlan,Jnctl
+Juanacatlán,Jnctl
+JuanacatlÃ¡n,Jnctl
+Lam,Lam
+Lamudi,Lam
+lamudi,Lam
 Local Comercial,LocC
+Local en Centro Comercial,LocCP
 Local en centro comercial,LocCP
 Locales,Loc
+locales,Loc
 Locales comerciales,LocC
 Locales en Centros Comerciales,LocCP
 Locales Retail,LocR
+Mit,Mit
+Mitula,Mit
+mitula,Mit
+Nave Industrial,NavI
 Nave industrial,NavI
 Naves Industriales,NavI
 Naves/Bodegas,NavB
@@ -73,9 +90,21 @@ Oficina,Ofc
 Oficinas,Ofc
 Parcela,Parc
 Penthouse,Penth
+Prop,Prop
+Propiedades,Prop
+propiedades,Prop
+Propiedades.com,Prop
+propiedades.com,Prop
 Quinta,Quin
 Rancho,Ranc
 Ranchos,Ranc
+REN,Ren
+Ren,Ren
+Renta,Ren
+renta,Ren
+Rentar,Ren
+Salt,Salt
+San Pedro Tlaquepaque,Tlaq
 Terreno,Terr
 Terreno comercial,TerrC
 Terreno industrial,TerrI
@@ -83,23 +112,36 @@ Terrenos,Terr
 Terrenos Comerciales,TerrC
 Terrenos Habitacionales,TerrH
 Terrenos Industriales,TerrI
+Tlaj,Tlaj
+Tlajomulco,Tlaj
+Tlajomulco de ZuÃ±iga,Tlaj
+Tlajomulco de Zuñiga,Tlaj
+Tlajomulco de ZÃºÃ±iga,Tlaj
+Tlajomulco de Zúñiga,Tlaj
+Tlaq,Tlaq
+Ton,Ton
+Tonala,Ton
+Tonalá,Ton
+TonalÃ¡,Ton
+Tro,Tro
+Trovit,Tro
+trovit,Tro
+VEN,Ven
+Ven,Ven
+Ven-d,Ven-d
+Ven-r,Ven-r
+Venta,Ven
+venta,Ven
+Venta-d,Ven-d
+venta-d,Ven-d
+Venta-r,Ven-r
+venta-r,Ven-r
 Villa,Vill
-,
-5. Meses,Name
-Enero,Ene
-Febrero,Feb
-Marzo,Mar
-Abril,Abr
-Mayo,May
-Junio,Jun
-Julio,Jul
-Agosto,Ago
-Septiembre,Sep
-Octubre,Oct
-Noviembre,Nov
-Diciembre,Dic
-,
-6. Año,Name
-2025,25
-2026,26
-2027,27
+Zap,Zap
+Zapopan,Zap
+zapopan,Zap
+Zapotlanejo,Zptl
+zapotlanejo,Zptl
+Ático,Atc
+Ãtico,Atc
+Ãtico,Atc

@@ -30,6 +30,7 @@ from collections import defaultdict
 
 # Integración del adaptador de scrapers
 from scraper_adapter import ScraperAdapter
+from abbreviation_utils import AbbreviationResolver
 
 # Configurar el directorio base
 BASE_DIR = Path.cwd()  # Usar directorio actual
@@ -76,7 +77,7 @@ class ScrapingTask:
 
 class LinuxScrapingOrchestrator:
     """Orquestador principal optimizado para Ubuntu Linux"""
-    
+
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
             config_path = str(CONFIG_PATH)
@@ -95,6 +96,19 @@ class LinuxScrapingOrchestrator:
             self.urls_path = configured_urls
         self.scrapers_path = self.base_dir / Path(self.config['scrapers']['path'])
         self.adapter = ScraperAdapter(self.base_dir)
+        self.abbreviation_resolver = AbbreviationResolver(
+            self.base_dir / "Lista de Variables" / "Lista de Variables Orquestacion.csv",
+            strict=True,
+        )
+        self.scraper_expected_sites = {
+            'inm24': 'Inm24',
+            'lam': 'Lam',
+            'cyt': 'CyT',
+            'mit': 'Mit',
+            'prop': 'Prop',
+            'tro': 'Tro',
+        }
+        self._website_override_notified = set()
         
         # Crear directorios necesarios
         self._ensure_directories()
@@ -112,9 +126,16 @@ class LinuxScrapingOrchestrator:
         # Locks por sitio para evitar 2 scrapers simultáneos del mismo dominio
         # Nota: evitamos anotación inline para compatibilidad con algunos analizadores
         self._site_locks = defaultdict(threading.Lock)
-        
+
         logger.info(f"Orquestador inicializado en: {self.base_dir}")
-        
+
+    @staticmethod
+    def _clean_csv_value(value) -> str:
+        """Normaliza valores provenientes de CSV manejando NaN y espacios."""
+        if pd.isna(value):
+            return ""
+        return str(value).strip()
+
     def _ensure_directories(self):
         """Crea todos los directorios necesarios"""
         directories = [
@@ -304,19 +325,47 @@ class LinuxScrapingOrchestrator:
         try:
             df = pd.read_csv(csv_file, encoding='utf-8')
             required_columns = ['PaginaWeb', 'Ciudad', 'Operacion', 'ProductoPaginaWeb', 'URL']
-            
+
             if not all(col in df.columns for col in required_columns):
                 logger.error(f"Columnas requeridas faltantes en {csv_file}")
                 return tasks
-            
+
             limit_one = bool(self.config.get('execution', {}).get('single_url_task_per_scraper', False))
             for i, (_, row) in enumerate(df.iterrows()):
+                website = self.abbreviation_resolver.to_abbreviation(
+                    self._clean_csv_value(row.get('PaginaWeb', '')),
+                    context='PaginaWeb'
+                )
+                city = self.abbreviation_resolver.to_abbreviation(
+                    self._clean_csv_value(row.get('Ciudad', '')),
+                    context='Ciudad'
+                )
+                operation = self.abbreviation_resolver.to_abbreviation(
+                    self._clean_csv_value(row.get('Operacion', '')),
+                    context='Operacion'
+                )
+                product = self.abbreviation_resolver.to_abbreviation(
+                    self._clean_csv_value(row.get('ProductoPaginaWeb', '')),
+                    context='ProductoPaginaWeb'
+                )
+                expected_site = self.scraper_expected_sites.get(scraper_name.lower())
+                if expected_site and website != expected_site:
+                    notify_key = (scraper_name, website)
+                    if notify_key not in self._website_override_notified:
+                        logger.warning(
+                            "Sobrescribiendo PaginaWeb '%s' por abreviatura esperada '%s' para scraper %s",
+                            website,
+                            expected_site,
+                            scraper_name,
+                        )
+                        self._website_override_notified.add(notify_key)
+                    website = expected_site
                 task = ScrapingTask(
                     scraper_name=scraper_name,
-                    website=row['PaginaWeb'],
-                    city=row['Ciudad'],
-                    operation=row['Operacion'],
-                    product=row['ProductoPaginaWeb'],
+                    website=website,
+                    city=city,
+                    operation=operation,
+                    product=product,
                     url=row['URL'],
                     order=i + 1,
                     created_at=datetime.now()
