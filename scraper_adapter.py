@@ -1,11 +1,9 @@
-#!/usr/bin/env python3
 """Adaptador responsable de ejecutar los scrapers dentro del orquestador."""
 from __future__ import annotations
 
 import importlib.util
 import logging
 import os
-import shutil
 from contextlib import contextmanager
 from pathlib import Path
 from types import ModuleType
@@ -44,20 +42,23 @@ class ScraperAdapter:
         if not script_path.exists():
             raise ScraperExecutionError(f"Scraper no encontrado: {script_path}")
         if task.is_detail and dependency_path and not dependency_path.exists():
-            raise ScraperExecutionError(f"Archivo de dependencia no disponible: {dependency_path}")
+            raise ScraperExecutionError(
+                f"Archivo de dependencia no disponible: {dependency_path}"
+            )
 
         module = self._load_module(script_path)
         with self._temporary_workdir(self.scrapers_dir):
             with self._patched_environment(task, output_file, dependency_path, batch):
                 self._invoke_scraper(module, output_file)
-        final_file = self._ensure_output_file(task, output_file)
-        return final_file
+        return self._ensure_output_file(task, output_file)
 
     # ------------------------------------------------------------------
     def _load_module(self, script_path: Path) -> ModuleType:
         spec = importlib.util.spec_from_file_location(script_path.stem, script_path)
         if spec is None or spec.loader is None:
-            raise ScraperExecutionError(f"No se pudo cargar el módulo del scraper: {script_path}")
+            raise ScraperExecutionError(
+                f"No se pudo cargar el módulo del scraper: {script_path}"
+            )
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)  # type: ignore[assignment]
         return module
@@ -100,7 +101,9 @@ class ScraperAdapter:
             website_code = task.website_code or task.website
             site_cfg = self.config.website_config(website_code)
             if "max_pages_per_session" in site_cfg:
-                updates["SCRAPER_MAX_PAGES"] = str(site_cfg.get("max_pages_per_session"))
+                updates["SCRAPER_MAX_PAGES"] = str(
+                    site_cfg.get("max_pages_per_session")
+                )
             if "rate_limit_seconds" in site_cfg:
                 updates["SCRAPER_RATE_LIMIT"] = str(site_cfg.get("rate_limit_seconds"))
         except Exception:
@@ -108,9 +111,6 @@ class ScraperAdapter:
 
         previous_values = {key: os.environ.get(key) for key in updates}
         os.environ.update({k: v for k, v in updates.items() if v is not None})
-
-        if hasattr(task, "DDIR"):
-            setattr(task, "DDIR", str(output_file.parent) + os.sep)
 
         try:
             yield
@@ -127,23 +127,13 @@ class ScraperAdapter:
         if hasattr(module, "main") and callable(module.main):  # type: ignore[attr-defined]
             module.main()  # type: ignore[attr-defined]
         else:
-            raise ScraperExecutionError("El scraper no expone una función main() ejecutable")
+            raise ScraperExecutionError(
+                "El scraper no expone una función main() ejecutable"
+            )
 
     def _ensure_output_file(self, task: ScrapingTask, output_file: Path) -> Path:
-        if output_file.exists() and output_file.stat().st_size > 0:
-            return output_file
-        # Algunos scrapers generan el archivo en otras rutas; se busca el CSV más reciente
-        candidate = self._find_recent_csv()
-        if candidate:
-            output_file.parent.mkdir(parents=True, exist_ok=True)
-            shutil.move(str(candidate), output_file)
+        if output_file.exists():
             return output_file
         raise ScraperExecutionError(
             f"El scraper {task.scraper_name} no generó la salida esperada en {output_file}"
         )
-
-    def _find_recent_csv(self) -> Optional[Path]:
-        csv_files = list(self.scrapers_dir.glob("*.csv"))
-        if not csv_files:
-            return None
-        return max(csv_files, key=lambda path: path.stat().st_mtime)

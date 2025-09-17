@@ -168,10 +168,16 @@ class TaskRepository:
                 """
                 INSERT OR REPLACE INTO execution_batches
                     (batch_id, month_year, execution_number, started_at, total_tasks, status)
-                VALUES (?, ?, ?, COALESCE((SELECT started_at FROM execution_batches WHERE batch_id = ?), CURRENT_TIMESTAMP), ?, 'running')
-                """
-                ,
-                (batch_id, month_year, execution_number, batch_id, total_tasks, total_tasks),
+                VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    COALESCE((SELECT started_at FROM execution_batches WHERE batch_id = ?), CURRENT_TIMESTAMP),
+                    ?,
+                    'running'
+                )
+                """,
+                (batch_id, month_year, execution_number, batch_id, total_tasks),
             )
             conn.commit()
         batch = self.batch_by_id(batch_id)
