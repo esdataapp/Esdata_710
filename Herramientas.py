@@ -1,18 +1,21 @@
-import os
+"""Herramientas utilitarias para tareas de mantenimiento del proyecto."""
+from __future__ import annotations
 
-def crear_carpetas_necesarias():
-    """Crea todas las carpetas necesarias para el proyecto si no existen."""
-    carpetas = [
-        "urls",
-        "lista de variables",
-        "Scrapers",
-        "data"
-    ]
-    for carpeta in carpetas:
-        if not os.path.exists(carpeta):
-            os.makedirs(carpeta)
-            print(f"Carpeta '{carpeta}' creada.")
+from pathlib import Path
 
-def limpiar_archivos_json(carpeta):
-    """Elimina todos los archivos JSON en la carpeta especificada."""
-    # ...existing code...
+from esdata.configuration import ConfigManager
+
+
+def ensure_project_structure(base_dir: Path | None = None) -> None:
+    """Crea las carpetas base declaradas en la configuración."""
+    config = ConfigManager(base_dir)
+    config.data_path()
+    config.urls_path()
+    config.logs_path()
+    (config.base_dir / "Scrapers").mkdir(parents=True, exist_ok=True)
+
+
+def list_scrapers(base_dir: Path | None = None) -> list[str]:
+    """Devuelve los scrapers habilitados según la configuración."""
+    config = ConfigManager(base_dir)
+    return config.enabled_scrapers()
