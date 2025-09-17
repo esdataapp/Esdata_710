@@ -11,6 +11,8 @@ import os
 import json
 import yaml
 import sys
+import re
+import unicodedata
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -73,6 +75,10 @@ class ScrapingTask:
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     error_message: Optional[str] = None
+    website_code: Optional[str] = None
+    city_code: Optional[str] = None
+    operation_code: Optional[str] = None
+    product_code: Optional[str] = None
 
 class LinuxScrapingOrchestrator:
     """Orquestador principal optimizado para Ubuntu Linux"""
@@ -80,8 +86,9 @@ class LinuxScrapingOrchestrator:
     def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
             config_path = str(CONFIG_PATH)
-        
+
         self.config = self._load_config(config_path)
+        self.alias_maps = self._prepare_alias_maps()
         self.base_dir = BASE_DIR
         self.db_path = Path(self.config['database']['path'])
         self.data_path = Path(self.config['data']['base_path'])
@@ -157,7 +164,8 @@ class LinuxScrapingOrchestrator:
                 'retry_delay_minutes': 15,   # Reducido para Ubuntu
                 'execution_interval_days': 15,
                 'rate_limit_delay_seconds': 2,  # Reducido para mejor rendimiento
-                'chain_detail_immediately': True
+                'chain_detail_immediately': True,
+                'single_url_task_per_scraper': False
             },
             'websites': {
                 'Inm24': {'priority': 1, 'has_detail_scraper': True},
@@ -166,8 +174,138 @@ class LinuxScrapingOrchestrator:
                 'Mit': {'priority': 4, 'has_detail_scraper': False},
                 'Prop': {'priority': 5, 'has_detail_scraper': False},
                 'Tro': {'priority': 6, 'has_detail_scraper': False}
+            },
+            'aliases': {
+                'websites': {
+                    'inmuebles24': 'Inm24',
+                    'casasyterrenos': 'CyT',
+                    'lamudi': 'Lam',
+                    'mitula': 'Mit',
+                    'propiedades.com': 'Prop',
+                    'trovit': 'Tro'
+                }
             }
         }
+
+    # ------------------------ Normalización de variables ------------------------
+
+    def _strip_accents(self, value: str) -> str:
+        return ''.join(ch for ch in unicodedata.normalize('NFKD', value) if not unicodedata.combining(ch))
+
+    def _standardize_key(self, value: Optional[str]) -> str:
+        if value is None:
+            return ''
+        text = self._strip_accents(str(value).strip())
+        text = text.lower()
+        text = re.sub(r'[^a-z0-9]+', '_', text)
+        text = re.sub(r'_+', '_', text)
+        return text.strip('_')
+
+    def _slugify_for_code(self, value: Optional[str]) -> str:
+        if not value:
+            return 'Unknown'
+        key = self._standardize_key(value)
+        if not key:
+            return 'Unknown'
+        tokens = [token.capitalize() for token in key.split('_') if token]
+        if not tokens:
+            tokens = [key.upper()]
+        slug = ''.join(tokens)
+        return slug[:48] if len(slug) > 48 else slug
+
+    def _prepare_alias_maps(self) -> Dict[str, Dict[str, str]]:
+        alias_maps = {dimension: {} for dimension in ('websites', 'cities', 'operations', 'products')}
+        alias_cfg = self.config.get('aliases', {}) if isinstance(self.config, dict) else {}
+
+        def register(dimension: str, key: Optional[str], value: Optional[str]):
+            if not key or not value:
+                return
+            normalized = self._standardize_key(key)
+            if normalized:
+                alias_maps[dimension].setdefault(normalized, value)
+
+        # Sitios: claves de config + alias explícitos
+        for site_key in self.config.get('websites', {}).keys():
+            register('websites', site_key, site_key)
+        for alias_key, canonical in alias_cfg.get('websites', {}).items():
+            register('websites', alias_key, canonical)
+
+        # Ciudades
+        for city in self.config.get('cities', []):
+            code = city.get('code') if isinstance(city, dict) else None
+            name = city.get('name') if isinstance(city, dict) else None
+            if code:
+                register('cities', code, code)
+            if name:
+                register('cities', name, code or name)
+        for alias_key, canonical in alias_cfg.get('cities', {}).items():
+            register('cities', alias_key, canonical)
+
+        # Operaciones
+        for op in self.config.get('operations', []):
+            code = op.get('code') if isinstance(op, dict) else None
+            name = op.get('name') if isinstance(op, dict) else None
+            if code:
+                register('operations', code, code)
+            if name:
+                register('operations', name, code or name)
+        for alias_key, canonical in alias_cfg.get('operations', {}).items():
+            register('operations', alias_key, canonical)
+
+        # Productos
+        for product in self.config.get('products', []):
+            code = product.get('code') if isinstance(product, dict) else None
+            name = product.get('name') if isinstance(product, dict) else None
+            if code:
+                register('products', code, code)
+            if name:
+                register('products', name, code or name)
+        for alias_key, canonical in alias_cfg.get('products', {}).items():
+            register('products', alias_key, canonical)
+
+        return alias_maps
+
+    def _normalize_dimension(self, dimension: str, raw_value: Optional[str]) -> str:
+        normalized_key = self._standardize_key(raw_value)
+        mapping = self.alias_maps.get(dimension, {})
+        if normalized_key and normalized_key in mapping:
+            return mapping[normalized_key]
+        return self._slugify_for_code(raw_value)
+
+    def _code_or_fallback(self, code: Optional[str], raw: str) -> str:
+        return code or self._slugify_for_code(raw)
+
+    def _populate_task_codes(self, task: ScrapingTask) -> ScrapingTask:
+        if not task.website_code:
+            task.website_code = self._normalize_dimension('websites', task.website)
+        if not task.city_code:
+            task.city_code = self._normalize_dimension('cities', task.city)
+        if not task.operation_code:
+            task.operation_code = self._normalize_dimension('operations', task.operation)
+        if not task.product_code:
+            task.product_code = self._normalize_dimension('products', task.product)
+        return task
+
+    def _lock_key(self, task: ScrapingTask) -> str:
+        task = self._populate_task_codes(task)
+        return self._code_or_fallback(task.website_code, task.website)
+
+    def _create_detail_task(self, base_task: ScrapingTask) -> ScrapingTask:
+        detail_task = ScrapingTask(
+            scraper_name=base_task.scraper_name + '_det',
+            website=base_task.website,
+            city=base_task.city,
+            operation=base_task.operation,
+            product=base_task.product,
+            url=f"DETAIL_FROM:{base_task.scraper_name}",
+            order=base_task.order,
+            created_at=datetime.now(),
+            website_code=base_task.website_code,
+            city_code=base_task.city_code,
+            operation_code=base_task.operation_code,
+            product_code=base_task.product_code
+        )
+        return detail_task
     
     def _init_database(self):
         """Inicializa la base de datos SQLite con configuración thread-safe"""
@@ -310,22 +448,38 @@ class LinuxScrapingOrchestrator:
                 return tasks
             
             limit_one = bool(self.config.get('execution', {}).get('single_url_task_per_scraper', False))
+            if limit_one:
+                logger.warning(
+                    "single_url_task_per_scraper está habilitado en la configuración, "
+                    "pero se ignorará para respetar todas las filas del CSV."
+                )
+
             for i, (_, row) in enumerate(df.iterrows()):
+                website_val = row.get('PaginaWeb', '')
+                city_val = row.get('Ciudad', '')
+                operation_val = row.get('Operacion', '')
+                product_val = row.get('ProductoPaginaWeb', '')
+                url_val = row.get('URL', '')
+
+                website = '' if pd.isna(website_val) else str(website_val).strip()
+                city = '' if pd.isna(city_val) else str(city_val).strip()
+                operation = '' if pd.isna(operation_val) else str(operation_val).strip()
+                product = '' if pd.isna(product_val) else str(product_val).strip()
+                url = '' if pd.isna(url_val) else str(url_val).strip()
+
                 task = ScrapingTask(
                     scraper_name=scraper_name,
-                    website=row['PaginaWeb'],
-                    city=row['Ciudad'],
-                    operation=row['Operacion'],
-                    product=row['ProductoPaginaWeb'],
-                    url=row['URL'],
+                    website=website,
+                    city=city,
+                    operation=operation,
+                    product=product,
+                    url=url,
                     order=i + 1,
                     created_at=datetime.now()
                 )
+                self._populate_task_codes(task)
                 tasks.append(task)
-                if limit_one:
-                    # Solo tomar la primera coincidencia por scraper para que el scraper pagine internamente
-                    break
-                
+
             logger.info(f"Cargadas {len(tasks)} tareas desde {csv_file}")
                 
         except Exception as e:
@@ -336,16 +490,26 @@ class LinuxScrapingOrchestrator:
     def get_output_path(self, task: ScrapingTask, batch_id: str, month_year: str, execution_number: int) -> Path:
         """Genera la ruta de salida para los datos"""
         # data/CyT/Gdl/Ven/Dep/Sep25/01
-        path = self.data_path / task.website / task.city / task.operation / task.product / month_year / f"{execution_number:02d}"
+        task = self._populate_task_codes(task)
+        website_dir = self._code_or_fallback(task.website_code, task.website)
+        city_dir = self._code_or_fallback(task.city_code, task.city)
+        operation_dir = self._code_or_fallback(task.operation_code, task.operation)
+        product_dir = self._code_or_fallback(task.product_code, task.product)
+        path = self.data_path / website_dir / city_dir / operation_dir / product_dir / month_year / f"{execution_number:02d}"
         path.mkdir(parents=True, exist_ok=True)
         return path
-    
+
     def get_output_filename(self, task: ScrapingTask, month_year: str, execution_number: int, is_url_file: bool = False) -> str:
         """Genera el nombre del archivo de salida"""
+        task = self._populate_task_codes(task)
+        website_token = self._code_or_fallback(task.website_code, task.website)
+        city_token = self._code_or_fallback(task.city_code, task.city)
+        operation_token = self._code_or_fallback(task.operation_code, task.operation)
+        product_token = self._code_or_fallback(task.product_code, task.product)
         if is_url_file:
-            return f"{task.website}URL_{task.city}_{task.operation}_{task.product}_{month_year}_{execution_number:02d}.csv"
+            return f"{website_token}URL_{city_token}_{operation_token}_{product_token}_{month_year}_{execution_number:02d}.csv"
         else:
-            return f"{task.website}_{task.city}_{task.operation}_{task.product}_{month_year}_{execution_number:02d}.csv"
+            return f"{website_token}_{city_token}_{operation_token}_{product_token}_{month_year}_{execution_number:02d}.csv"
     
     def execute_scraper_sync(self, task: ScrapingTask, batch_id: str, month_year: str, execution_number: int) -> bool:
         """Ejecuta un scraper individual de forma síncrona"""
@@ -369,15 +533,16 @@ class LinuxScrapingOrchestrator:
                 logger.error(f"Error de base de datos: {e}")
                 return False
         
-        # Actualizar estado a running
+        # Normalizar códigos y actualizar estado a running
+        task = self._populate_task_codes(task)
         self.update_task_status_sync(task, ScrapingStatus.RUNNING)
-        
-    # Preparar paths de salida
+
+        # Preparar paths de salida
         output_path = self.get_output_path(task, batch_id, month_year, execution_number)
-        
+
         # Para scrapers con detalle, generar archivo URL intermedio
         is_detail_scraper = task.scraper_name.endswith('_det')
-        has_detail_scraper = self.config['websites'].get(task.website, {}).get('has_detail_scraper', False)
+        has_detail_scraper = self.config['websites'].get(task.website_code, {}).get('has_detail_scraper', False)
         
         if has_detail_scraper and not is_detail_scraper:
             output_filename = self.get_output_filename(task, month_year, execution_number, is_url_file=True)
@@ -401,9 +566,13 @@ class LinuxScrapingOrchestrator:
             # Ejecutar scraper usando el adaptador (mejor control de outputs)
             env_info = {
                 'website': task.website,
+                'website_code': task.website_code,
                 'city': task.city,
+                'city_code': task.city_code,
                 'operation': task.operation,
+                'operation_code': task.operation_code,
                 'product': task.product,
+                'product_code': task.product_code,
                 'batch_id': batch_id,
                 'order': task.order,
                 'is_detail': is_detail_scraper,
@@ -413,7 +582,7 @@ class LinuxScrapingOrchestrator:
             # El adaptador aún no inyecta URL en scrapers legacy, pero dejamos registro
             logger.info(f"[Adapter] Ejecutando {task.scraper_name} (order={task.order}) -> {output_file.name}")
             # Determinar max_pages por sitio si est1 configurado
-            site_cfg = self.config.get('websites', {}).get(task.website, {})
+            site_cfg = self.config.get('websites', {}).get(task.website_code, {})
             site_max_pages = site_cfg.get('max_pages_per_session')
             success = self.adapter.adapt_scraper(
                 task.scraper_name,
@@ -761,19 +930,10 @@ class LinuxScrapingOrchestrator:
             if not self.config['execution'].get('chain_detail_immediately', True):
                 detail_tasks: List[ScrapingTask] = []
                 for base_task in main_tasks:
-                    site_cfg = self.config['websites'].get(base_task.website, {})
+                    base_task = self._populate_task_codes(base_task)
+                    site_cfg = self.config['websites'].get(base_task.website_code, {})
                     if site_cfg.get('has_detail_scraper'):
-                        det_scraper_name = base_task.scraper_name + '_det'
-                        det_task = ScrapingTask(
-                            scraper_name=det_scraper_name,
-                            website=base_task.website,
-                            city=base_task.city,
-                            operation=base_task.operation,
-                            product=base_task.product,
-                            url=f"DETAIL_FROM:{base_task.scraper_name}",
-                            order=base_task.order,
-                            created_at=datetime.now()
-                        )
+                        det_task = self._create_detail_task(base_task)
                         detail_tasks.append(det_task)
 
                 if detail_tasks:
@@ -821,31 +981,23 @@ class LinuxScrapingOrchestrator:
         logger.info(f"Ejecutando {len(tasks)} tareas en paralelo con {max_workers} workers")
         
         def guarded_execute(task: ScrapingTask):
-            lock = self._site_locks[task.website]
+            task = self._populate_task_codes(task)
+            lock = self._site_locks[self._lock_key(task)]
             acquired = lock.acquire(timeout=3600)  # hasta 1h por seguridad
             if not acquired:
-                logger.error(f"No se pudo adquirir lock para sitio {task.website} en tarea {task.scraper_name}")
+                logger.error(f"No se pudo adquirir lock para sitio {task.website_code} en tarea {task.scraper_name}")
                 return False
             try:
-                logger.info(f"[LOCK ACQUIRED] {task.website} -> {task.scraper_name}")
+                logger.info(f"[LOCK ACQUIRED] {task.website_code} -> {task.scraper_name}")
                 success = self.execute_scraper_sync(task, batch_id, month_year, execution_number)
                 # Si el scraper base completó y el sitio tiene scraper de detalle, ejecutar inmediatamente su *_det
                 try:
-                    site_cfg = self.config['websites'].get(task.website, {})
+                    site_cfg = self.config['websites'].get(task.website_code, {})
                     has_detail = site_cfg.get('has_detail_scraper', False)
                     is_detail = task.scraper_name.endswith('_det')
                     if success and has_detail and not is_detail:
-                        det_task = ScrapingTask(
-                            scraper_name=task.scraper_name + '_det',
-                            website=task.website,
-                            city=task.city,
-                            operation=task.operation,
-                            product=task.product,
-                            url=f"DETAIL_FROM:{task.scraper_name}",
-                            order=task.order,
-                            created_at=datetime.now()
-                        )
-                        logger.info(f"[CHAIN] Ejecutando detalle inmediatamente: {det_task.scraper_name} para {task.website}")
+                        det_task = self._create_detail_task(task)
+                        logger.info(f"[CHAIN] Ejecutando detalle inmediatamente: {det_task.scraper_name} para {task.website_code}")
                         # Ejecutar detalle respetando el mismo lock del sitio
                         self.execute_scraper_sync(det_task, batch_id, month_year, execution_number)
                 except Exception as chain_e:
@@ -853,7 +1005,7 @@ class LinuxScrapingOrchestrator:
                 return success
             finally:
                 lock.release()
-                logger.info(f"[LOCK RELEASED] {task.website} -> {task.scraper_name}")
+                logger.info(f"[LOCK RELEASED] {task.website_code} -> {task.scraper_name}")
 
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             # Enviar todas las tareas para ejecución con protección por sitio
@@ -887,7 +1039,7 @@ class LinuxScrapingOrchestrator:
             """, (batch_id,))
             for row in cursor.fetchall():
                 if row['attempts'] < row['max_attempts']:
-                    retry_candidates.append(ScrapingTask(
+                    retry_task = ScrapingTask(
                         scraper_name=row['scraper_name'],
                         website=row['website'],
                         city=row['city'],
@@ -897,7 +1049,9 @@ class LinuxScrapingOrchestrator:
                         order=0,  # orden no crítico en reintento
                         attempts=row['attempts'],
                         max_attempts=row['max_attempts']
-                    ))
+                    )
+                    self._populate_task_codes(retry_task)
+                    retry_candidates.append(retry_task)
 
         if retry_candidates:
             logger.info(f"Reintentos: {len(retry_candidates)} tareas serán reejecutadas")
@@ -914,23 +1068,24 @@ class LinuxScrapingOrchestrator:
     def execute_tasks_sequential(self, tasks: List[ScrapingTask], batch_id: str, month_year: str, execution_number: int):
         """Ejecuta tareas secuencialmente (fallback para casos específicos)"""
         for i, task in enumerate(tasks, 1):
-            logger.info(f"Ejecutando tarea {i}/{len(tasks)}: {task.scraper_name} - {task.website}")
-            
+            task = self._populate_task_codes(task)
+            logger.info(f"Ejecutando tarea {i}/{len(tasks)}: {task.scraper_name} - {task.website_code}")
+
             # Rate limiting
             time.sleep(self.config['execution']['rate_limit_delay_seconds'])
             # Asegurar exclusión por sitio también en modo secuencial (por si otros hilos existen)
-            lock = self._site_locks[task.website]
+            lock = self._site_locks[self._lock_key(task)]
             acquired = lock.acquire(timeout=3600)
             if not acquired:
-                logger.error(f"(Seq) No se pudo adquirir lock para {task.website} -> {task.scraper_name}")
+                logger.error(f"(Seq) No se pudo adquirir lock para {task.website_code} -> {task.scraper_name}")
                 self.update_task_status_sync(task, ScrapingStatus.FAILED, "Lock no adquirido en modo secuencial")
                 continue
             try:
-                logger.info(f"(Seq)[LOCK ACQUIRED] {task.website} -> {task.scraper_name}")
+                logger.info(f"(Seq)[LOCK ACQUIRED] {task.website_code} -> {task.scraper_name}")
                 success = self.execute_scraper_sync(task, batch_id, month_year, execution_number)
             finally:
                 lock.release()
-                logger.info(f"(Seq)[LOCK RELEASED] {task.website} -> {task.scraper_name}")
+                logger.info(f"(Seq)[LOCK RELEASED] {task.website_code} -> {task.scraper_name}")
             
             if success:
                 logger.info(f"✓ Tarea completada: {task.scraper_name}")

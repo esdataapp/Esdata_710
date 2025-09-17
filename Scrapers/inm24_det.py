@@ -326,11 +326,19 @@ def resolve_url_list_file():
     out = os.environ.get('SCRAPER_OUTPUT_FILE')
     if out:
         parent = os.path.dirname(out)
+        website_code = os.environ.get('SCRAPER_WEBSITE_CODE')
         website = os.environ.get('SCRAPER_WEBSITE', 'Inm24')
-        pattern_prefix = f"{website}URL_"
-        for f in os.listdir(parent):
-            if f.startswith(pattern_prefix) and f.endswith('.csv'):
-                return os.path.join(parent, f)
+        prefixes = []
+        if website_code:
+            prefixes.append(f"{website_code}URL_")
+        if website and website != website_code:
+            prefixes.append(f"{website}URL_")
+        if not prefixes:
+            prefixes.append("Inm24URL_")
+        for prefix in prefixes:
+            for f in os.listdir(parent):
+                if f.startswith(prefix) and f.endswith('.csv'):
+                    return os.path.join(parent, f)
     return None
 
 def main():
