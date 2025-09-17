@@ -51,7 +51,7 @@ class AbbreviationResolver:
             raise ValueError(f"El archivo de abreviaturas está vacío: {path}")
 
         header = rows[0]
-        if len(header) < 2 or header[0].strip().lower() not in {"variable", "valor"}:
+        if len(header) < 2 or header[0].strip().lower() not in {"variable", "valor", "abreviatura"}:
             # El archivo no tiene encabezado estándar; procesar todas las filas
             data_rows = rows
         else:
