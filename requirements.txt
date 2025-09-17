@@ -1,16 +1,6 @@
 # ============================================================================
-# SISTEMA DE ORQUESTACIÓN DE SCRAPING INMOBILIARIO
-# Requirements.txt - Dependencias de Python
-# ============================================================================
-# 
-# Instalación:
-#   pip install -r requirements.txt
-#
-# Actualización:
-#   pip install -r requirements.txt --upgrade
-#
-# Verificación:
-#   pip freeze > installed_packages.txt
+# SISTEMA DE ORQUESTACIÓN DE SCRAPING INMOBILIARIO - UBUNTU 24.04 LTS
+# Requirements.txt - Dependencias de Python (ANÁLISIS COMPLETO)
 # ============================================================================
 
 # ============================================================================
@@ -18,183 +8,129 @@
 # ============================================================================
 
 # Manipulación de datos
-pandas>=2.1.0,<3.0.0              # Análisis y manipulación de datos
-numpy>=1.24.0,<2.0.0               # Computación numérica
-openpyxl>=3.1.0                    # Soporte para archivos Excel
+pandas>=2.1.0,<3.0.0
+numpy>=1.24.0,<2.0.0
 
-# Configuración y serialización
-pyyaml>=6.0,<7.0                   # Parsing de archivos YAML
-python-dateutil>=2.8.2             # Utilidades para fechas
-pathlib2>=2.3.7 ; python_version < "3.4"  # Soporte pathlib para Python antiguo
-
-# Base de datos
-sqlite3                            # Base de datos SQLite (incluida en Python)
+# Configuración y serialización  
+pyyaml>=6.0,<7.0
+python-dateutil>=2.8.2
 
 # ============================================================================
 # DEPENDENCIAS DE SCRAPING - WEB SCRAPING
 # ============================================================================
 
 # HTTP y requests
-requests>=2.31.0,<3.0.0           # Cliente HTTP
-urllib3>=1.26.0,<3.0.0            # Cliente HTTP de bajo nivel
-httpx>=0.25.0                     # Cliente HTTP asíncrono alternativo
+requests>=2.31.0,<3.0.0
+urllib3>=1.26.0,<3.0.0
 
 # Parsing HTML/XML
-beautifulsoup4>=4.12.0,<5.0.0     # Parser HTML/XML
-lxml>=4.9.0,<5.0.0                # Parser XML rápido
-html5lib>=1.1                     # Parser HTML5 puro Python
+beautifulsoup4>=4.12.0,<5.0.0
+lxml>=4.9.0,<5.0.0
 
 # Selenium WebDriver
-selenium>=4.15.0,<5.0.0           # Automatización de navegadores web
-seleniumbase>=4.21.0              # Framework extendido de Selenium
-webdriver-manager>=4.0.0          # Gestión automática de drivers
-
-# User agents y proxy
-fake-useragent>=1.4.0             # Rotación de user agents
-requests-html>=0.10.0             # Requests con soporte JavaScript
+selenium>=4.15.0,<5.0.0
+seleniumbase>=4.21.0
+webdriver-manager>=4.0.0
 
 # ============================================================================
-# DEPENDENCIAS DE SISTEMA - INFRAESTRUCTURA
+# DEPENDENCIAS DE SISTEMA - INFRAESTRUCTURA Y ORQUESTACIÓN
 # ============================================================================
 
 # Logging y monitoreo
-colorama>=0.4.6                   # Colores en terminal Windows
-rich>=13.7.0                      # Terminal rica y dashboard
-tqdm>=4.66.0                      # Barras de progreso
+colorama>=0.4.6
+tabulate>=0.9.0
 
-# CLI y interfaz de usuario
-click>=8.1.7                      # Framework CLI
-tabulate>=0.9.0                   # Formateo de tablas
-prompt-toolkit>=3.0.0             # Toolkit para CLI interactivos
+# Scheduling y tareas (orchestrator.py)
+schedule>=1.2.0
 
-# Scheduling y tareas
-schedule>=1.2.0                   # Programación de tareas
-APScheduler>=3.10.0               # Scheduler avanzado
+# Async support (orchestrator.py usa asyncio)
+aiohttp>=3.8.0
 
-# ============================================================================
-# DEPENDENCIAS DE UTILIDADES - HELPERS
-# ============================================================================
-
-# Validaciones y utilidades
-validators>=0.22.0                # Validación de URLs y datos
-retrying>=1.3.4                   # Reintentos con backoff
-python-dotenv>=1.0.0              # Variables de entorno desde archivos
-configparser>=5.3.0               # Parser de archivos de configuración
-
-# Sistema y archivos
-psutil>=5.9.0                     # Información del sistema
-watchdog>=3.0.0                   # Monitoreo de archivos
-send2trash>=1.8.0                 # Envío seguro a papelera
-
-# Compresión y archivos
-zipfile38>=0.0.3 ; python_version < "3.8"  # Soporte zipfile para Python antiguo
+# Base de datos SQLite (incluida en Python estándar, pero agregamos para compatibilidad)
+# sqlite3 - incluido en Python standard library
 
 # ============================================================================
-# DEPENDENCIAS DE DESARROLLO - TESTING Y QA
+# DEPENDENCIAS ADICIONALES - SCRIPTS DE AUTOMATIZACIÓN
 # ============================================================================
 
-# Testing framework
-pytest>=7.4.0                     # Framework de testing
-pytest-cov>=4.1.0                 # Cobertura de código
-pytest-mock>=3.11.0               # Mocking para tests
-pytest-xdist>=3.3.0               # Tests paralelos
+# Para monitor_cli.py y orchestrator.py
+# argparse - incluido en Python standard library
+# json - incluido en Python standard library  
+# pathlib - incluido en Python standard library
+# datetime - incluido en Python standard library
+# typing - incluido en Python standard library
+# dataclasses - incluido en Python standard library
+# concurrent.futures - incluido en Python standard library
+# contextlib - incluido en Python standard library
+# enum - incluido en Python standard library
+# subprocess - incluido en Python standard library
+# shutil - incluido en Python standard library
+# signal - incluido en Python standard library
+# time - incluido en Python standard library
+# os - incluido en Python standard library
+# sys - incluido en Python standard library
+# re - incluido en Python standard library
+# importlib - incluido en Python standard library
+# logging - incluido en Python standard library
 
-# Code quality
-flake8>=6.0.0                     # Linting de código
-black>=23.7.0                     # Formateo automático
-isort>=5.12.0                     # Ordenamiento de imports
-mypy>=1.5.0                       # Type checking
-
-# Documentation
-sphinx>=7.1.0                     # Generación de documentación
-sphinx-rtd-theme>=1.3.0           # Tema Read the Docs
-
-# ============================================================================
-# DEPENDENCIAS OPCIONALES - CARACTERÍSTICAS AVANZADAS
-# ============================================================================
-
-# Async support (para desarrollo futuro)
-aiohttp>=3.8.0                    # Cliente HTTP asíncrono
-asyncio>=3.4.3                    # Programación asíncrona
-aiofiles>=23.2.0                  # Operaciones de archivos asíncronas
-
-# Database alternatives (para escalabilidad futura)
-sqlalchemy>=2.0.0                 # ORM para bases de datos
-alembic>=1.12.0                   # Migraciones de base de datos
-
-# Monitoring and metrics (para producción)
-prometheus-client>=0.17.0         # Métricas para Prometheus
-statsd>=4.0.0                     # Envío de métricas StatsD
-
-# Notifications (para alertas)
-python-telegram-bot>=20.0         # Bot de Telegram
-slack-sdk>=3.22.0                 # SDK de Slack
+# Para validate_system.py y debugging
+# importlib.util - incluido en Python standard library
 
 # ============================================================================
-# DEPENDENCIAS DE COMPATIBILIDAD - WINDOWS
+# INSTALACIÓN UBUNTU 24.04 LTS
 # ============================================================================
 
-# Windows specific
-pywin32>=306 ; sys_platform == "win32"     # APIs de Windows
-wmi>=1.5.1 ; sys_platform == "win32"       # WMI para información del sistema
+# Comandos de instalación:
+# python3 -m venv venv
+# source venv/bin/activate  
+# pip install -r requirements.txt
+
+# Dependencias del sistema Ubuntu:
+# sudo apt update
+# sudo apt install python3-venv python3-pip chromium-browser chromium-chromedriver
+
+# Para Google Chrome (alternativa):
+# wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+# echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+# sudo apt update
+# sudo apt install google-chrome-stable
+
+# Para ChromeDriver en Ubuntu:
+# sudo apt install chromium-chromedriver
+# export PATH=$PATH:/usr/lib/chromium-browser/
+
+# Verificar instalación:
+# pip list | grep -E "(pandas|selenium|beautifulsoup4|pyyaml|requests|schedule|tabulate|aiohttp)"
 
 # ============================================================================
-# DEPENDENCIAS DE DESARROLLO LOCAL
+# SCRIPTS ANALIZADOS Y SUS DEPENDENCIAS:
 # ============================================================================
-
-# Jupyter (para análisis de datos interactivo)
-jupyter>=1.0.0                    # Jupyter notebooks
-matplotlib>=3.7.0                 # Visualización de datos
-seaborn>=0.12.0                   # Visualización estadística
-
-# ============================================================================
-# VERSIONES MÍNIMAS POR COMPATIBILIDAD
-# ============================================================================
-
-# Python version requirement
-# python_requires = ">=3.8"
-
-# Specific version locks for stability
-certifi>=2023.7.22               # Certificados SSL actualizados
-charset-normalizer>=3.2.0        # Normalización de charset
-idna>=3.4                        # Internationalización de dominios
-typing-extensions>=4.7.0         # Extensiones de typing
-
-# ============================================================================
-# NOTAS DE INSTALACIÓN
-# ============================================================================
-
-# Para instalar solo dependencias core:
-#   pip install pandas pyyaml beautifulsoup4 selenium requests colorama tabulate
-
-# Para entorno de desarrollo completo:
-#   pip install -r requirements.txt
-
-# Para actualizar todas las dependencias:
-#   pip install -r requirements.txt --upgrade
-
-# Para crear entorno virtual:
-#   python -m venv venv
-#   venv\Scripts\activate  (Windows)
-#   pip install -r requirements.txt
-
-# ============================================================================
-# TROUBLESHOOTING
-# ============================================================================
-
-# Si hay problemas con lxml en Windows:
-#   pip install --only-binary=lxml lxml
-
-# Si hay problemas con Selenium:
-#   pip install seleniumbase
-#   sbase install chromedriver
-
-# Si hay problemas de memoria con pandas:
-#   pip install "pandas[performance]"
-
-# Para verificar versiones instaladas:
-#   pip list | findstr "pandas\|selenium\|beautifulsoup4"
-
-# ============================================================================
-# FIN DEL ARCHIVO
+# 
+# orchestrator.py: asyncio, logging, json, yaml, pandas, sqlite3, schedule, 
+#                  concurrent.futures, subprocess, shutil, dataclasses, enum
+#
+# monitor_cli.py: argparse, json, sqlite3, pandas, yaml, tabulate, datetime
+#
+# validate_system.py: pandas, yaml, sqlite3, importlib.util, subprocess, logging
+#
+# improved_scraper_adapter.py: pandas, logging, shutil, re, time, importlib
+#
+# scraper_adapter.py: pandas, importlib.util, logging, datetime
+#
+# Scrapers/inm24.py: pandas, beautifulsoup4, seleniumbase, datetime, time
+#
+# Scrapers/inm24_det.py: pandas, beautifulsoup4, selenium, datetime, time, re
+#
+# Scrapers/lam.py: pandas, beautifulsoup4, seleniumbase, datetime, time
+#
+# Scrapers/lam_det.py: pandas, beautifulsoup4, selenium, datetime, time, json
+#
+# Scrapers/mit.py: pandas, beautifulsoup4, selenium, datetime, time
+#
+# Scrapers/cyt.py: pandas, beautifulsoup4, selenium, datetime, time
+#
+# Scrapers/prop.py: requests, pandas, beautifulsoup4, pprint
+#
+# Scrapers/tro.py: requests, pandas, beautifulsoup4, pprint
+#
 # ============================================================================

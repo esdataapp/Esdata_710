@@ -24,7 +24,7 @@ class SystemValidator:
     
     def __init__(self, base_dir: Path = None):
         if base_dir is None:
-            base_dir = Path(r"C:\Users\criss\Desktop\Esdata 710")
+            base_dir = Path.cwd()  # Usar directorio actual
         
         self.base_dir = base_dir
         self.config_path = base_dir / "config" / "config.yaml"
@@ -142,7 +142,7 @@ class SystemValidator:
     def validate_python_dependencies(self) -> bool:
         """Valida las dependencias de Python"""
         required_packages = [
-            'pandas', 'pyyaml', 'beautifulsoup4', 'selenium', 
+            'pandas', 'yaml', 'bs4', 'selenium', 
             'seleniumbase', 'requests', 'lxml', 'tabulate'
         ]
         
@@ -429,7 +429,7 @@ class SystemValidator:
 
 def main():
     """Función principal de validación"""
-    base_dir = Path(r"C:\Users\criss\Desktop\Esdata 710")
+    base_dir = Path.cwd()  # Usar directorio actual
     
     if not base_dir.exists():
         print(f"❌ Directorio del proyecto no encontrado: {base_dir}")

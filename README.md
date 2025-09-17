@@ -1,7 +1,7 @@
 # 🏗️ Sistema de Orquestación de Scraping Inmobiliario
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://python.org)
-[![Platform](https://img.shields.io/badge/platform-Windows-lightgrey.svg)](https://microsoft.com/windows)
+[![Python Version](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://python.org)
+[![Platform](https://img.shields.io/badge/platform-Ubuntu%2024.04-orange.svg)](https://ubuntu.com)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-Production%20Ready-brightgreen.svg)](https://github.com)
 
@@ -232,50 +232,56 @@ CREATE INDEX idx_batches_date ON execution_batches(started_at);
 
 ### 📋 **Requisitos del Sistema**
 
-- **Sistema Operativo**: Windows 10/11 (64-bit)
-- **Python**: 3.8 o superior
+- **Sistema Operativo**: Ubuntu 24.04 LTS (64-bit)
+- **Python**: 3.12 o superior
 - **Memoria RAM**: Mínimo 4GB, recomendado 8GB
 - **Espacio en Disco**: Mínimo 2GB libres
 - **Conexión a Internet**: Estable para scraping
 
 ### ⚡ **Instalación Rápida**
 
-```batch
+```bash
 # 1. Clonar o descargar el proyecto
-cd "C:\Users\criss\Desktop\Esdata 710"
+cd "/home/esdata/Documents/GitHub/Esdata_710"
 
-# 2. Ejecutar configuración automática
-setup.bat
+# 2. Configurar entorno Python
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
 # 3. Verificar instalación
 python validate_system.py
 
 # 4. Ejecutar demostración
-demo.bat
+python orchestrator.py test
 ```
 
 ### 🔧 **Instalación Manual**
 
-```batch
+```bash
 # 1. Verificar Python
-python --version
+python3 --version
 
-# 2. Instalar dependencias
+# 2. Crear entorno virtual
+python3 -m venv venv
+source venv/bin/activate
+
+# 3. Instalar dependencias
 pip install -r requirements.txt
 
-# 3. Crear directorios
-mkdir logs temp backups
+# 4. Crear directorios
+mkdir -p logs temp backups
 
-# 4. Configurar variables de entorno (opcional)
-set SCRAPING_CONFIG_PATH=C:\Users\criss\Desktop\Esdata 710\config\config.yaml
+# 5. Configurar variables de entorno (opcional)
+export SCRAPING_CONFIG_PATH="/home/esdata/Documents/GitHub/Esdata_710/config/config.yaml"
 
-# 5. Inicializar base de datos
+# 6. Inicializar base de datos
 python orchestrator.py test
 ```
 
 ### 🔍 **Verificación de Instalación**
 
-```batch
+```bash
 # Validación completa del sistema
 python validate_system.py
 
@@ -293,8 +299,8 @@ python monitor_cli.py system
 ```yaml
 # Configuración de base de datos
 database:
-  path: "C:\\Users\\criss\\Desktop\\Esdata 710\\orchestrator.db"
-  backup_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\backups"
+  path: "/home/esdata/Documents/GitHub/Esdata_710/orchestrator.db"
+  backup_path: "/home/esdata/Documents/GitHub/Esdata_710/backups"
   backup_retention_days: 30
 
 # Configuración de ejecución
@@ -313,7 +319,7 @@ websites:
     has_detail_scraper: true            # Tiene scraper de detalle
     rate_limit_seconds: 4               # Rate limiting específico
     max_pages_per_session: 100          # Límite de páginas
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
   
   CyT:
     priority: 2
@@ -355,21 +361,21 @@ CyT,Zap,Ven,Cas,https://www.casasyterrenos.com/jalisco/zapopan/casas/venta
 
 ### 🔐 **Variables de Entorno (Opcional)**
 
-```batch
+```bash
 # Configuración avanzada
-set SCRAPING_CONFIG_PATH=C:\path\to\config.yaml
-set SCRAPING_LOG_LEVEL=DEBUG
-set SCRAPING_MAX_WORKERS=8
-set SCRAPING_RATE_LIMIT=2
+export SCRAPING_CONFIG_PATH=/path/to/config.yaml
+export SCRAPING_LOG_LEVEL=DEBUG
+export SCRAPING_MAX_WORKERS=8
+export SCRAPING_RATE_LIMIT=2
 ```
 
 ## 🎮 Uso
 
 ### 🖥️ **Menu Interactivo (Recomendado)**
 
-```batch
+```bash
 # Abrir menú principal
-start.bat
+python monitor_cli.py status --detailed
 ```
 
 **Opciones disponibles:**
@@ -385,7 +391,7 @@ start.bat
 ### 💻 **Línea de Comandos**
 
 #### **Orquestador Principal**
-```batch
+```bash
 # Ejecutar lote completo de scraping
 python orchestrator.py run
 
@@ -400,7 +406,7 @@ python orchestrator.py test
 ```
 
 #### **Monitor CLI**
-```batch
+```bash
 # Estado actual del sistema
 python monitor_cli.py status
 python monitor_cli.py status --detailed
@@ -425,7 +431,7 @@ python monitor_cli.py run
 ```
 
 #### **Validación del Sistema**
-```batch
+```bash
 # Validación completa
 python validate_system.py
 
@@ -438,23 +444,25 @@ python validate_system.py --check scrapers
 ### 🔄 **Flujo de Trabajo Típico**
 
 #### **1. Preparación (Una vez)**
-```batch
-# Configurar sistema
-setup.bat
+```bash
+# Configurar entorno
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 
 # Personalizar URLs
-notepad urls\cyt_urls.csv
-notepad urls\inm24_urls.csv
+nano urls/cyt_urls.csv
+nano urls/inm24_urls.csv
 # ... editar otros archivos
 
 # Ajustar configuración
-notepad config\config.yaml
+nano config/config.yaml
 ```
 
 #### **2. Ejecución Regular**
-```batch
+```bash
 # Opción A: Menu interactivo
-start.bat
+python monitor_cli.py status --detailed
 
 # Opción B: Comando directo
 python orchestrator.py run
@@ -464,7 +472,7 @@ python monitor_cli.py status --detailed
 ```
 
 #### **3. Análisis de Resultados**
-```batch
+```bash
 # Ver resultados
 python monitor_cli.py history
 
@@ -472,14 +480,14 @@ python monitor_cli.py history
 python monitor_cli.py stats
 
 # Abrir datos
-explorer data
+xdg-open data
 ```
 
 ## 📊 Monitoreo
 
 ### 🎯 **Dashboard en Tiempo Real**
 
-```batch
+```bash
 # Dashboard interactivo
 python monitor_cli.py status --detailed
 ```
@@ -541,21 +549,21 @@ monitoring:
 ### 📋 **Reportes Automáticos**
 
 #### **Reporte Diario**
-```batch
+```bash
 # Generar reporte del día
-python monitor_cli.py stats --days 1 > reports\daily_$(date).txt
+python monitor_cli.py stats --days 1 > reports/daily_$(date +%Y%m%d).txt
 ```
 
 #### **Reporte Semanal**
-```batch
+```bash
 # Generar reporte semanal
-python monitor_cli.py stats --days 7 > reports\weekly_$(date).txt
+python monitor_cli.py stats --days 7 > reports/weekly_$(date +%Y%m%d).txt
 ```
 
 #### **Reporte de Salud del Sistema**
-```batch
+```bash
 # Generar reporte completo
-python validate_system.py > reports\health_$(date).txt
+python validate_system.py > reports/health_$(date +%Y%m%d).txt
 ```
 
 ## 🔌 API y CLI
@@ -948,9 +956,10 @@ Solución:
 Síntoma: WebDriverException: chromedriver not found
 Causa: ChromeDriver no instalado o desactualizado
 Solución:
-1. Descargar ChromeDriver: https://chromedriver.chromium.org/
-2. Agregar al PATH del sistema
+1. Instalar Chrome: wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add - && sudo apt-get update && sudo apt-get install google-chrome-stable
+2. Instalar ChromeDriver: sudo apt-get install chromium-chromedriver
 3. Alternativa: usar seleniumbase auto-download
+4. Verificar instalación: which chromedriver
 ```
 
 #### **Error: "Rate limit exceeded"**
@@ -986,7 +995,7 @@ Solución:
 ### 🩺 **Diagnóstico Avanzado**
 
 #### **Diagnóstico Completo del Sistema**
-```batch
+```bash
 # Ejecutar diagnóstico completo
 python validate_system.py > diagnostico.txt 2>&1
 
@@ -1002,9 +1011,9 @@ python -c "import psutil; print(f'CPU: {psutil.cpu_percent()}%, RAM: {psutil.vir
 ```
 
 #### **Logs de Debug**
-```batch
+```bash
 # Activar logging detallado
-set PYTHONPATH=%PYTHONPATH%;C:\Users\criss\Desktop\Esdata 710
+export PYTHONPATH="$PYTHONPATH:/home/esdata/Documents/GitHub/Esdata_710"
 python -c "
 import logging
 logging.basicConfig(level=logging.DEBUG)
@@ -1014,7 +1023,7 @@ orch.run_execution_batch()
 "
 
 # Ver logs en tiempo real
-powershell Get-Content logs\orchestrator.log -Wait
+tail -f logs/orchestrator.log
 ```
 
 #### **Análisis de Performance**
@@ -1047,34 +1056,36 @@ if __name__ == "__main__":
 ### 🆘 **Recuperación de Emergencia**
 
 #### **Restaurar desde Backup**
-```batch
+```bash
 # Ubicar último backup
-dir backups\ /o:d
+ls -la backups/
 
 # Restaurar base de datos
-copy backups\scraping_backup_YYYYMMDD_HHMMSS.tar.gz .
+cp backups/scraping_backup_YYYYMMDD_HHMMSS.tar.gz .
 tar -xzf scraping_backup_YYYYMMDD_HHMMSS.tar.gz
-copy scraping_backup_YYYYMMDD_HHMMSS\orchestrator.db .
+cp scraping_backup_YYYYMMDD_HHMMSS/orchestrator.db .
 
 # Verificar restauración
 python monitor_cli.py status
 ```
 
 #### **Reset Completo del Sistema**
-```batch
+```bash
 # CUIDADO: Esto eliminará todos los datos
-echo "Esta operación eliminará todos los datos. ¿Continuar? (Y/N)"
-set /p confirm=
-if %confirm%==Y (
-    rmdir /s /q data logs temp backups
-    del orchestrator.db
-    python setup.bat
+echo "Esta operación eliminará todos los datos. ¿Continuar? (y/N)"
+read confirm
+if [ "$confirm" = "y" ] || [ "$confirm" = "Y" ]; then
+    rm -rf data logs temp backups
+    rm -f orchestrator.db
+    python3 -m venv venv
+    source venv/bin/activate
+    pip install -r requirements.txt
     echo "Sistema reseteado completamente"
-)
+fi
 ```
 
 #### **Modo de Emergencia (Solo Monitoreo)**
-```batch
+```bash
 # Ejecutar solo monitoreo sin scraping
 python monitor_cli.py status
 python monitor_cli.py system
@@ -1092,24 +1103,24 @@ print(cursor.fetchall())
 ### 📞 **Soporte Técnico**
 
 #### **Información para Reportar Problemas**
-```batch
+```bash
 # Generar reporte completo para soporte
 echo "=== REPORTE DE SOPORTE ===" > soporte.txt
-echo "Fecha: %date% %time%" >> soporte.txt
-echo. >> soporte.txt
+echo "Fecha: $(date)" >> soporte.txt
+echo "" >> soporte.txt
 
 echo "=== INFORMACIÓN DEL SISTEMA ===" >> soporte.txt
-systeminfo | findstr /C:"OS Name" /C:"OS Version" /C:"Total Physical Memory" >> soporte.txt
-python --version >> soporte.txt
-echo. >> soporte.txt
+lsb_release -a >> soporte.txt 2>/dev/null
+python3 --version >> soporte.txt
+echo "" >> soporte.txt
 
 echo "=== VALIDACIÓN DEL SISTEMA ===" >> soporte.txt
 python validate_system.py >> soporte.txt 2>&1
-echo. >> soporte.txt
+echo "" >> soporte.txt
 
 echo "=== ÚLTIMOS LOGS ===" >> soporte.txt
-type logs\orchestrator.log | findstr /C:"ERROR" /C:"CRITICAL" >> soporte.txt
-echo. >> soporte.txt
+grep -E "ERROR|CRITICAL" logs/orchestrator.log | tail -20 >> soporte.txt
+echo "" >> soporte.txt
 
 echo "=== ESTADO ACTUAL ===" >> soporte.txt
 python monitor_cli.py status >> soporte.txt 2>&1

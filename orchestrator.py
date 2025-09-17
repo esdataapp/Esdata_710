@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Sistema de Orquestación de Scraping Inmobiliario - Windows Edition
-Versión adaptada para C:\Users\criss\Desktop\Esdata 710
+Sistema de Orquestación de Scraping Inmobiliario - Linux Edition
+Versión adaptada para Ubuntu 24.04 LTS
 Compatible con scrapers existentes de CyT, Inm24, Lam, Mit, Prop, Tro
 """
 
@@ -27,7 +27,7 @@ import subprocess
 import shutil
 
 # Configurar el directorio base
-BASE_DIR = Path(r"C:\Users\criss\Desktop\Esdata 710")
+BASE_DIR = Path.cwd()  # Usar directorio actual
 CONFIG_PATH = BASE_DIR / "config" / "config.yaml"
 
 # Configuración de logging

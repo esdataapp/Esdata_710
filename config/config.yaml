@@ -1,32 +1,32 @@
-# Configuración del Sistema de Orquestación de Scraping - Windows
-# Adaptado para la carpeta Esdata 710
+# Configuración del Sistema de Orquestación de Scraping - Ubuntu Linux
+# Adaptado para /home/esdata/Documents/GitHub/ESDATA_710
 
 # Configuración de base de datos
 database:
-  path: "C:\\Users\\criss\\Desktop\\Esdata 710\\orchestrator.db"
-  backup_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\backups"
+  path: "orchestrator.db"  # Relativo al directorio del proyecto
+  backup_path: "backups"
   backup_retention_days: 30
 
-# Configuración de directorios
+# Configuración de directorios  
 data:
-  base_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\data"
-  urls_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\urls"
-  logs_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\logs"
-  temp_path: "C:\\Users\\criss\\Desktop\\Esdata 710\\temp"
+  base_path: "data"  # Relativo al directorio del proyecto
+  urls_path: "urls"
+  logs_path: "logs"
+  temp_path: "temp"
 
 # Configuración de scrapers
 scrapers:
-  path: "C:\\Users\\criss\\Desktop\\Esdata 710\\Scrapers"
-  python_executable: "python"
+  path: "Scrapers"  # Relativo al directorio del proyecto
+  python_executable: "/home/esdata/Documents/GitHub/Esdata_710/.venv/bin/python"  # Usar entorno virtual
   timeout_minutes: 30
   memory_limit_mb: 512
 
 # Configuración de ejecución
 execution:
-  max_parallel_scrapers: 6  # Ajustado para Windows
+  max_parallel_scrapers: 8  # Aprovechando mejor los 8 threads del Xeon
   retry_delay_minutes: 30
   execution_interval_days: 15
-  rate_limit_delay_seconds: 3  # Más conservador para Windows
+  rate_limit_delay_seconds: 2  # Más rápido en Linux
   max_retry_attempts: 3
   enable_auto_recovery: true
   
@@ -42,48 +42,48 @@ websites:
     priority: 1
     has_detail_scraper: true
     base_url: "https://inmuebles24.com"
-    rate_limit_seconds: 4
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    rate_limit_seconds: 3
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 100
     
   CyT:
     priority: 2
     has_detail_scraper: false
     base_url: "https://casasyterrenos.com"
-    rate_limit_seconds: 3
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    rate_limit_seconds: 2
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 150
     
   Lam:
     priority: 3
     has_detail_scraper: true
     base_url: "https://lamudi.com.mx"
-    rate_limit_seconds: 3
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    rate_limit_seconds: 2
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 120
     
   Mit:
     priority: 4
     has_detail_scraper: false
     base_url: "https://mitula.com.mx"
-    rate_limit_seconds: 2
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    rate_limit_seconds: 1
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 80
     
   Prop:
     priority: 5
     has_detail_scraper: false
     base_url: "https://propiedades.com"
-    rate_limit_seconds: 3
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    rate_limit_seconds: 2
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 100
     
   Tro:
     priority: 6
     has_detail_scraper: false
     base_url: "https://trovit.com.mx"
-    rate_limit_seconds: 2
-    user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+    rate_limit_seconds: 1
+    user_agent: "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 90
 
 # Configuración de ciudades
@@ -143,7 +143,7 @@ data_processing:
   enable_duplicate_detection: true
   enable_data_cleaning: true
   export_formats: ["csv", "json"]
-  compress_old_files: false  # Deshabilitado en Windows por simplicidad
+  compress_old_files: true  # Habilitado en Linux
   
 # Configuración de backup
 backup:
@@ -159,7 +159,7 @@ security:
   respect_robots_txt: true
   rotate_user_agents: true
   use_proxy_rotation: false
-  max_requests_per_minute: 20  # Más conservador
+  max_requests_per_minute: 30  # Más agresivo en Linux
   
 # Configuración de logging
 logging:
@@ -168,9 +168,9 @@ logging:
   backup_count: 3
   format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 
-# Variables de entorno para Windows
+# Variables de entorno para Ubuntu Linux
 environment:
   development: false
   debug_mode: true  # Habilitado para desarrollo
   enable_profiling: false
-  max_memory_usage_mb: 1024
+  max_memory_usage_mb: 2048  # Más memoria disponible en Linux

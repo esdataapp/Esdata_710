@@ -39,14 +39,14 @@ Esta guía proporciona instrucciones detalladas para desplegar el Sistema de Orq
 ### 🔧 Software Requerido
 
 #### **Sistema Operativo**
-- **Primario**: Windows 10/11 Pro (64-bit)
-- **Alternativo**: Windows Server 2019/2022
-- **Desarrollo**: Ubuntu 20.04+ (WSL2)
+- **Primario**: Ubuntu 24.04 LTS (64-bit)
+- **Alternativo**: Ubuntu 22.04 LTS
+- **Desarrollo**: Ubuntu Desktop o Ubuntu Server
 
 #### **Runtime y Dependencias**
 ```bash
 # Verificar versiones requeridas
-python --version          # ≥ 3.8
+python3 --version         # ≥ 3.12
 pip --version             # ≥ 21.0
 git --version             # ≥ 2.30
 ```
@@ -56,7 +56,7 @@ git --version             # ≥ 2.30
 #### **Puertos Requeridos**
 - **Outbound HTTP/HTTPS**: 80, 443 (scraping)
 - **Outbound DNS**: 53 (resolución de nombres)
-- **Inbound SSH**: 22 (administración remota, opcional)
+- **Inbound SSH**: 22 (administración remota)
 - **Inbound Monitoring**: 8080 (métricas, futuro)
 
 #### **Dominios a Permitir**
@@ -78,50 +78,46 @@ github.com
 
 ### 📋 Pre-requisitos de Sistema
 
-#### **1. Configuración de Windows**
+#### **1. Configuración de Ubuntu**
 
-```powershell
-# Ejecutar como Administrador
+```bash
+# Actualizar sistema
+sudo apt update && sudo apt upgrade -y
 
-# Habilitar ejecución de scripts PowerShell
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+# Instalar dependencias del sistema
+sudo apt install -y python3 python3-pip python3-venv git curl wget
 
-# Instalar Chocolatey (gestor de paquetes)
-Set-ExecutionPolicy Bypass -Scope Process -Force; 
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072; 
-iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+# Instalar Google Chrome y ChromeDriver
+wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" | sudo tee /etc/apt/sources.list.d/google-chrome.list
+sudo apt update
+sudo apt install -y google-chrome-stable chromium-chromedriver
 
-# Instalar Git
-choco install git -y
-
-# Instalar Python
-choco install python -y
-
-# Refrescar variables de entorno
-refreshenv
+# Verificar instalaciones
+python3 --version
+git --version
+google-chrome --version
+chromedriver --version
 ```
 
 #### **2. Configuración de Usuario**
 
-```batch
+```bash
 # Crear estructura de directorios base
-mkdir C:\ScrapingSystem
-mkdir C:\ScrapingSystem\logs
-mkdir C:\ScrapingSystem\data
-mkdir C:\ScrapingSystem\backups
-mkdir C:\ScrapingSystem\config
+mkdir -p ~/ScrapingSystem/{logs,data,backups,config}
 
-# Configurar permisos (ejecutar como Admin)
-icacls C:\ScrapingSystem /grant:r %USERNAME%:(OI)(CI)F
+# Configurar permisos
+chmod 755 ~/ScrapingSystem
+chmod 750 ~/ScrapingSystem/config
 ```
 
 #### **3. Verificación de Conectividad**
 
-```batch
+```bash
 # Test de conectividad a sitios objetivo
-ping inmuebles24.com
-ping casasyterrenos.com
-ping lamudi.com.mx
+ping -c 3 inmuebles24.com
+ping -c 3 casasyterrenos.com
+ping -c 3 lamudi.com.mx
 
 # Test de resolución DNS
 nslookup pypi.org
@@ -132,24 +128,24 @@ nslookup github.com
 
 #### **1. Crear Entorno Virtual**
 
-```batch
+```bash
 # Navegar al directorio del proyecto
-cd "C:\Users\criss\Desktop\Esdata 710"
+cd "/home/esdata/Documents/GitHub/Esdata_710"
 
 # Crear entorno virtual
-python -m venv venv
+python3 -m venv venv
 
 # Activar entorno virtual
-venv\Scripts\activate
+source venv/bin/activate
 
 # Verificar activación
-where python
+which python
 python --version
 ```
 
 #### **2. Actualizar Herramientas Base**
 
-```batch
+```bash
 # Actualizar pip, setuptools, wheel
 python -m pip install --upgrade pip setuptools wheel
 
@@ -162,37 +158,41 @@ pip list
 
 ### 🚀 Método 1: Instalación Automática (Recomendado)
 
-```batch
+```bash
 # 1. Navegar al directorio del proyecto
-cd "C:\Users\criss\Desktop\Esdata 710"
+cd "/home/esdata/Documents/GitHub/Esdata_710"
 
-# 2. Ejecutar script de configuración automática
-setup.bat
+# 2. Crear y activar entorno virtual
+python3 -m venv venv
+source venv/bin/activate
 
-# 3. Verificar instalación
+# 3. Instalar dependencias
+pip install -r requirements.txt
+
+# 4. Verificar instalación
 python validate_system.py
 
-# 4. Ejecutar demostración (opcional)
-demo.bat
+# 5. Ejecutar test del sistema
+python orchestrator.py test
 ```
 
 ### 🔧 Método 2: Instalación Manual
 
 #### **Paso 1: Preparación del Entorno**
 
-```batch
+```bash
 # Verificar que Python está disponible
-python --version
+python3 --version
 pip --version
 
 # Crear y activar entorno virtual
-python -m venv venv
-venv\Scripts\activate
+python3 -m venv venv
+source venv/bin/activate
 ```
 
 #### **Paso 2: Instalación de Dependencias**
 
-```batch
+```bash
 # Actualizar pip
 python -m pip install --upgrade pip
 
@@ -205,31 +205,27 @@ python -c "import pandas, yaml, sqlite3, selenium; print('✅ Dependencias crít
 
 #### **Paso 3: Configuración de Directorios**
 
-```batch
+```bash
 # Crear estructura de directorios
-mkdir logs
-mkdir temp  
-mkdir backups
-mkdir data
-mkdir config
+mkdir -p logs temp backups data config
 
 # Verificar estructura
-dir /b
+ls -la
 ```
 
 #### **Paso 4: Configuración Inicial**
 
-```batch
+```bash
 # Crear archivos de configuración
 python orchestrator.py setup
 
 # Generar archivo de configuración base
-copy config\config.yaml config\config.yaml.backup
+cp config/config.yaml config/config.yaml.backup
 ```
 
 #### **Paso 5: Validación**
 
-```batch
+```bash
 # Ejecutar validación completa
 python validate_system.py
 
@@ -244,7 +240,7 @@ python monitor_cli.py system
 
 #### **Setup Avanzado para Desarrolladores**
 
-```batch
+```bash
 # Entorno de desarrollo con herramientas adicionales
 pip install -r requirements.txt
 pip install pytest pytest-cov black flake8 mypy
@@ -254,8 +250,8 @@ pip install pre-commit
 pre-commit install
 
 # Setup de desarrollo
-set SCRAPING_DEBUG=1
-set SCRAPING_LOG_LEVEL=DEBUG
+export SCRAPING_DEBUG=1
+export SCRAPING_LOG_LEVEL=DEBUG
 
 # Verificar setup de desarrollo
 python -m pytest tests/ -v
@@ -275,8 +271,8 @@ environment: production  # development, staging, production
 
 # Configuración de base de datos
 database:
-  path: "C:\\ScrapingSystem\\data\\orchestrator.db"
-  backup_path: "C:\\ScrapingSystem\\backups"
+  path: "/home/esdata/Documents/GitHub/Esdata_710/orchestrator.db"
+  backup_path: "/home/esdata/Documents/GitHub/Esdata_710/backups"
   backup_retention_days: 90  # Más tiempo en producción
 
 # Configuración de ejecución para producción
@@ -298,34 +294,37 @@ logging:
 # Configuración de alertas (producción)
 alerts:
   enable_email: true
-  email_recipients: ["admin@empresa.com", "ops@empresa.com"]
+  email_recipients: ["esdataapp@gmail.com"]
   enable_slack: false
   critical_failure_threshold: 0.5
 ```
 
 #### **2. Variables de Entorno**
 
-```batch
-# Archivo: set_env.bat
-@echo off
+```bash
+# Archivo: set_env.sh
+#!/bin/bash
 
 # Configuración del sistema
-set SCRAPING_HOME=C:\ScrapingSystem
-set SCRAPING_CONFIG=%SCRAPING_HOME%\config\config.yaml
-set SCRAPING_LOG_DIR=%SCRAPING_HOME%\logs
-set SCRAPING_DATA_DIR=%SCRAPING_HOME%\data
+export SCRAPING_HOME="/home/esdata/Documents/GitHub/Esdata_710"
+export SCRAPING_CONFIG="$SCRAPING_HOME/config/config.yaml"
+export SCRAPING_LOG_DIR="$SCRAPING_HOME/logs"
+export SCRAPING_DATA_DIR="$SCRAPING_HOME/data"
 
 # Configuración de Python
-set PYTHONPATH=%SCRAPING_HOME%;%PYTHONPATH%
-set PYTHONUNBUFFERED=1
+export PYTHONPATH="$SCRAPING_HOME:$PYTHONPATH"
+export PYTHONUNBUFFERED=1
 
 # Configuración específica del entorno
-set SCRAPING_ENV=production
-set SCRAPING_DEBUG=0
+export SCRAPING_ENV=production
+export SCRAPING_DEBUG=0
 
-echo Environment configured for Scraping System
-echo Home: %SCRAPING_HOME%
-echo Config: %SCRAPING_CONFIG%
+echo "Environment configured for Scraping System"
+echo "Home: $SCRAPING_HOME"
+echo "Config: $SCRAPING_CONFIG"
+
+# Hacer ejecutable: chmod +x set_env.sh
+# Cargar variables: source set_env.sh
 ```
 
 #### **3. Configuración de Scrapers**
@@ -353,31 +352,34 @@ websites:
 
 #### **1. Permisos de Archivos**
 
-```batch
+```bash
 # Configurar permisos restrictivos
-icacls "C:\ScrapingSystem" /grant:r %USERNAME%:(OI)(CI)F
-icacls "C:\ScrapingSystem\config" /inheritance:r /grant:r %USERNAME%:F Administrators:F
+chmod -R 750 "/home/esdata/Documents/GitHub/Esdata_710"
+chmod 700 "/home/esdata/Documents/GitHub/Esdata_710/config"
 
 # Proteger archivos de configuración
-icacls "C:\ScrapingSystem\config\config.yaml" /inheritance:r /grant:r %USERNAME%:R Administrators:F
+chmod 600 "/home/esdata/Documents/GitHub/Esdata_710/config/config.yaml"
 
 # Verificar permisos
-icacls "C:\ScrapingSystem" /T
+ls -la "/home/esdata/Documents/GitHub/Esdata_710"
 ```
 
 #### **2. Configuración de Firewall**
 
-```powershell
-# Ejecutar como Administrador
+```bash
+# Configurar UFW (Uncomplicated Firewall)
+sudo ufw enable
 
-# Permitir Python para conexiones salientes
-netsh advfirewall firewall add rule name="Python Scraping Outbound" dir=out action=allow program="C:\Python39\python.exe"
+# Permitir SSH (si es necesario)
+sudo ufw allow ssh
 
-# Bloquear conexiones entrantes no necesarias
-netsh advfirewall firewall add rule name="Block Scraping Inbound" dir=in action=block program="C:\Python39\python.exe"
+# Permitir conexiones salientes HTTP/HTTPS (por defecto están permitidas)
+# Para ser específico:
+sudo ufw allow out 80
+sudo ufw allow out 443
 
 # Verificar reglas
-netsh advfirewall firewall show rule name="Python Scraping Outbound"
+sudo ufw status verbose
 ```
 
 #### **3. User-Agent y Rate Limiting**
@@ -386,8 +388,8 @@ netsh advfirewall firewall show rule name="Python Scraping Outbound"
 # En config.yaml
 security:
   user_agents:
-    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0"
+    - "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+    - "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0"
   
   rate_limiting:
     global_requests_per_minute: 120
@@ -405,12 +407,12 @@ security:
 
 #### **1. Validación de Sistema**
 
-```batch
+```bash
 # Ejecutar validación completa
 python validate_system.py > validation_report.txt
 
 # Verificar salida (debe ser exitosa)
-type validation_report.txt | findstr "PASS\|FAIL"
+grep -E "PASS|FAIL" validation_report.txt
 
 # Test de componentes individuales
 python orchestrator.py test
@@ -419,7 +421,7 @@ python monitor_cli.py system
 
 #### **2. Validación de Conectividad**
 
-```batch
+```bash
 # Test de conectividad a sitios objetivo
 python -c "
 import requests
@@ -435,7 +437,7 @@ for site in sites:
 
 #### **3. Validación de Performance**
 
-```batch
+```bash
 # Test de performance básico
 python -c "
 import time

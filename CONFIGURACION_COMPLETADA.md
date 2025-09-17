@@ -43,7 +43,7 @@ C:\Users\criss\Desktop\Esdata 710\
 │   └── tro_urls.csv                 # ✅ 6 URLs configuradas
 │
 └── 📁 DIRECTORIOS DEL SISTEMA
-    ├── data/                        # Datos extraídos
+    ├── Base_de_Datos/                        # Datos extraídos
     ├── logs/                        # Logs del sistema
     ├── temp/                        # Archivos temporales
     └── backups/                     # Backups automáticos

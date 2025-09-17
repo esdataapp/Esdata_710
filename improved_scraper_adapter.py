@@ -422,7 +422,7 @@ class ImprovedScraperAdapter:
 
 def test_improved_adapter():
     """Función de test para el adaptador mejorado"""
-    base_dir = Path(r"C:\Users\criss\Desktop\Esdata 710")
+    base_dir = Path.cwd()  # Usar directorio actual
     adapter = ImprovedScraperAdapter(base_dir)
     
     # Test con CyT

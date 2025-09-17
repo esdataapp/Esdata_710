@@ -183,7 +183,7 @@ class ScraperAdapter:
 
 def test_adapter():
     """Función de test para el adaptador"""
-    base_dir = Path(r"C:\Users\criss\Desktop\Esdata 710")
+    base_dir = Path.cwd()  # Usar directorio actual
     adapter = ScraperAdapter(base_dir)
     
     # Test con CyT

@@ -1,0 +1,10 @@
+2025-09-16 22:43:13,856 - __main__ - INFO - Configuración cargada desde: /home/esdata/Documents/GitHub/Esdata_710/config/config.yaml
+2025-09-16 22:43:13,856 - __main__ - INFO - Directorio asegurado: data
+2025-09-16 22:43:13,857 - __main__ - INFO - Directorio asegurado: urls
+2025-09-16 22:43:13,857 - __main__ - INFO - Directorio asegurado: /home/esdata/Documents/GitHub/Esdata_710/logs
+2025-09-16 22:43:13,857 - __main__ - INFO - Directorio asegurado: /home/esdata/Documents/GitHub/Esdata_710/temp
+2025-09-16 22:43:13,857 - __main__ - INFO - Directorio asegurado: /home/esdata/Documents/GitHub/Esdata_710/backups
+2025-09-16 22:43:13,858 - __main__ - INFO - Base de datos inicializada correctamente
+2025-09-16 22:43:13,858 - __main__ - INFO - Orquestador inicializado en: /home/esdata/Documents/GitHub/Esdata_710
+2025-09-16 22:43:13,861 - __main__ - INFO - Archivo de ejemplo creado: urls/cyt_urls.csv
+2025-09-16 22:43:13,862 - __main__ - INFO - Archivo de ejemplo creado: urls/inm24_urls.csv

@@ -16,7 +16,7 @@ import yaml
 from tabulate import tabulate
 
 # Configurar el directorio base
-BASE_DIR = Path(r"C:\Users\criss\Desktop\Esdata 710")
+BASE_DIR = Path.cwd()  # Usar directorio actual
 CONFIG_PATH = BASE_DIR / "config" / "config.yaml"
 
 class ScrapingMonitorWindows:
@@ -484,7 +484,7 @@ def main():
         elif args.command == 'run':
             monitor.run_now()
     except KeyboardInterrupt:
-        print("\n❌ Operación cancelada por el usuario")
+        print("\n❌ Operacion cancelada por el usuario")
     except Exception as e:
         print(f"❌ Error: {e}")
 
