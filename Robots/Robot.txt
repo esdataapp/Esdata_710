@@ -1,0 +1,43 @@
+User-agent: * 
+Disallow: /develop/ 
+Disallow: /mails/ 
+Disallow: /errores/ 
+Disallow: /bloques/ 
+Disallow: /bumex/ 
+Disallow: /homeSinPublicidad.bum 
+Disallow: /cms/
+
+#10/4/2024 -ubicado-en-
+User-agent: * 
+Disallow: /*-ubicado-en-*
+Allow: /propiedades/*-ubicado-en-*
+
+#6/3/24 
+User-agent: * 
+Disallow: /cdn-cgi/*
+
+#propuesto 15/4/2025
+Disallow: /*-ordenado-por-*
+Allow: /*-ordenado-por-precio-ascendente*
+
+#/20/5/2025
+User-agent: *
+Allow: /*pagina-2.html$
+Allow: /*pagina-3.html$
+Allow: /*pagina-4.html$
+Allow: /*pagina-5.html$
+Disallow: /*pagina-*.html
+
+Disallow: *?utm_source*
+
+Disallow: /cdn-cgi/*
+Disallow: /panel/*
+Disallow: /ecommerce/*
+Disallow: /users-api/*
+Disallow: /avisos-api/*
+Disallow: /leads-api/*
+Disallow: /rpseo-static/*
+
+Sitemap: https://www.inmuebles24.com/sitemaps_https.xml
+Sitemap: https://www.inmuebles24.com/sitemaps_list_emp_https.xml
+Sitemap: https://www.inmuebles24.com/sitemaps_prop_emp_https.xml
