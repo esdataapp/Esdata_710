@@ -33,7 +33,7 @@
 
   <Flow>
     The system should run several scrapers from the "scrapers" folder in parallel (4 or more at the same time with different “PaginaWeb”).
-    For each Scraper, there is a CSV of the URLs it has to scrape for each “PaginaWeb&gt”.
+    For each Scraper, there is a CSV of the URLs it has to scrape for each “PaginaWeb”.
     For example: the "cyt.py" Scraper has to scan the "cyt_urls.csv" file in the "URLs" folder (column 5 of the CSV),
     the "lam.py" Scraper must scan "lam_urls.csv", and so on, each Scraper with the CSV file named after it.
     Column 5 of each CSV has a desired order for the scrapes; this order must be respected and not altered.
