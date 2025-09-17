@@ -5,9 +5,6 @@
     Inside the "scrapers" folder, there are several scrapers that take URLs from the individual CSVs in the "urls" folder
     to scrape information from various web pages.
   </Your_Goal>
-“https://www.inmuebles24.com/bodegas-comerciales-en-venta-en-zapopan.html” y en cada url hay varias paginas https://www.inmuebles24.com/bodegas-comerciales-en-venta-en-zapopan-pagina-2.html
-Hay url que tienen una pagina o 30 paginas y algunos ninguna.
-Carpeta de URLS y Carpeta de Variables., todos los url tienen la forma 
 
   <Project_Goal>
     It will run multiple processes in parallel daily, re-running every 15 days (or twice a month) to keep the data updated.
@@ -94,6 +91,5 @@ Carpeta de URLS y Carpeta de Variables., todos los url tienen la forma
     I need to keep track of the progress of finished scraps, identify a "Scrap of the Month" from the completed jobs,
     and know which scraps are currently in process, which are queued to start, and which ones have not run at all.
     Additionally, I need any other utilities or tools that might be necessary for controlling and monitoring the orchestration (in the terminal).
-    I would like to maintain the log for the scraps within the same CSV file from which the URLs are sourced.
-  </Monitor>
+    </Monitor>
 </Project>
