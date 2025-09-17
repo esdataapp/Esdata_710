@@ -184,20 +184,17 @@ class ScraperAdapter:
             data_dir = scrapers_dir / "data"
             
             if data_dir.exists():
-                # Buscar archivos CSV recientes
-                csv_files = list(data_dir.rglob("*.csv"))
-                
-                if csv_files:
-                    # Tomar el más reciente
-                    latest_file = max(csv_files, key=lambda x: x.stat().st_mtime)
-                    
-                    # Verificar que sea reciente (último minuto)
-                    if (datetime.now().timestamp() - latest_file.stat().st_mtime) < 60:
-                        # Mover archivo
-                        import shutil
-                        shutil.move(str(latest_file), str(target_file))
-                        logger.info(f"Archivo movido: {latest_file} -> {target_file}")
-                        return True
+                # Buscar por coincidencia exacta de nombre de archivo para evitar cruces entre scrapers
+                candidates = [p for p in data_dir.rglob("*.csv") if p.name == target_file.name]
+                if candidates:
+                    # Elegir el más reciente entre los que coinciden exactamente
+                    chosen = max(candidates, key=lambda x: x.stat().st_mtime)
+                    import shutil
+                    # Asegurar carpeta destino
+                    target_file.parent.mkdir(parents=True, exist_ok=True)
+                    shutil.move(str(chosen), str(target_file))
+                    logger.info(f"Archivo movido (match exacto): {chosen} -> {target_file}")
+                    return True
             
             # Si no se encuentra archivo generado y no existe destino, crear placeholder
             if not target_file.exists():
@@ -211,6 +208,8 @@ class ScraperAdapter:
     def _create_placeholder_file(self, output_file: Path, scraper_name: str, note: str):
         """Crea un archivo placeholder cuando no se puede ejecutar completamente"""
         try:
+            # Asegurar directorio destino
+            output_file.parent.mkdir(parents=True, exist_ok=True)
             # Crear un CSV básico con información del scraper
             data = [{
                 'scraper': scraper_name,
