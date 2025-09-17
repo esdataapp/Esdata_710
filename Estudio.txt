@@ -1,0 +1,74 @@
+
+Resumen ejecutivo
+El repositorio contiene dos generaciones de orquestación: la capa “legacy” (Controlador.py, Orquestador.py, Herramientas.py) sigue esperando archivos .txt en carpetas en minúsculas, mientras que los datos reales están en CSV con mayúsculas, de modo que hoy no ejecuta nada útil.
+
+El orquestador “moderno” (orchestrator.py) carga correctamente los CSV pero solo toma la primera URL de cada archivo por la bandera single_url_task_per_scraper, y utiliza literalmente los valores de la columna PaginaWeb, por lo que las claves no coinciden con las del YAML (Inm24, Lam, etc.); esto rompe la activación automática de scrapers detalle, la asignación de límites de páginas y la nomenclatura de carpetas.
+
+El adaptador ejecuta los scrapers con variables de entorno, pero cuando el scraper no entrega el CSV esperado genera “placeholders”, así que hoy no existe una ruta garantizada de datos de detalle (ej. inm24_det, lam_det) porque el orquestador nunca los lanza al fallar la detección de dependencia.
+
+Los scrapers consumen Selenium/seleniumbase, crean un navegador por página y tienen sleep explícitos por cada campo (0.05 s), lo que vuelve inviable la ejecución paralela masiva y el objetivo de usar solo 80 % del hardware; además no respetan el nuevo esquema de carpetas porque el prefijo usa PaginaWeb tal como viene del CSV.
+
+Las herramientas de monitoreo/validación aún son maquetas: el CLI se anuncia “para Windows”, el validador duplica estados y crea directorios aunque estén mal nombrados, y el README promete servicios systemd, monitoreo en tiempo real y operación 24/7 que no aparecen en el código.
+
+Componentes legacy y estructura
+Controlador.py y Orquestador.py son la entrada principal del flujo antiguo; buscan carpetas urls / “lista de variables” y archivos {scraper}_urls.txt, {scraper}_lista.txt. No existe esa estructura ni los .txt, por lo que el flujo no puede iniciarse sin reescritura.
+
+Herramientas.py crea carpetas en minúsculas (urls, lista de variables) y deja un stub en limpiar_archivos_json, lo que evidencia que esta capa quedó sin completar y no coincide con la carpeta real Urls/ ni con la lista de variables actual.
+
+CSV y jerarquía de variables
+La carpeta vigente es Urls/ (con mayúscula) y los CSV guardan valores descriptivos (Inmuebles24, casas_y_terrenos, Zapopan, etc.), algunos con problemas de codificación (IxtlahuacÃ¡n).
+
+El YAML espera claves abreviadas (Inm24, CyT, Lam) y rutas urls/ minúsculas, por lo que la resolución de sitio y el rate limiting no se aplican al usar literalmente los textos del CSV.
+
+Orquestador moderno (orchestrator.py)
+load_urls_from_csv respeta el orden del CSV, pero al activarse single_url_task_per_scraper rompe el requerimiento de recorrer todas las filas; solo procesa la primera fila de cada archivo.
+
+La ruta de salida y el nombre del archivo usan task.website, así que hoy se generan carpetas tipo data/Inmuebles24/... en vez del formato especificado Inm24/... y no se distinguen archivos URL vs. detalle como dicta la documentación.
+
+La detección de scrapers detalle depende de self.config['websites'][task.website]; al no existir la clave, nunca se encadenan inm24_det ni lam_det, tampoco se inyecta max_pages_per_session ni se reserva el slot prioritario para Inm24.
+
+La ejecución paralela usa un ThreadPoolExecutor genérico sin control dinámico de recursos; no hay medición de CPU/RAM ni lógica de “Inm24 siempre activo + rotación de 3 sitios” que pide el objetivo principal.
+
+run_execution_batch registra todas las tareas como nuevas en cada lote pero no reanuda las que quedaron en estado running tras un corte; tampoco hay limpieza del batch ni consolidación de “scrap del mes”.
+
+Se importa schedule pero nunca se usa, señal de funcionalidades inconclusas (planificación/daemon).
+
+Adaptador y scrapers
+El adaptador carga módulos dinámicamente, setea variables de entorno (SCRAPER_INPUT_URL, SCRAPER_OUTPUT_FILE) y, si no detecta un CSV final, crea un “placeholder” en vez de fallar duro, lo que puede ocultar errores reales en los scrapers.
+
+inm24.py abre un navegador nuevo por cada página y hace time.sleep(5) tras cada carga; en ejecuciones largas esto dispara el consumo de memoria y tiempo por URL.
+
+inm24_det.py y lam_det.py imprimen cada campo con pausas de 0.05 s, multiplicando el tiempo por registro y saturando logs; no aceptan límites por lotes ni gestionan reintentos específicos.
+
+Ningún scraper consulta la “lista de variables” ni el estado de ejecución; dependen exclusivamente del CSV inicial o del archivo puente, sin sincronizar con la base de datos para reanudar después de un fallo.
+
+Configuración, monitoreo y utilidades
+config/config.yaml trae rutas y un python_executable absoluto de otra máquina (/home/esdata/...), así que una instalación limpia fallaría al intentar usar ese path.
+
+El monitor CLI está orientado explícitamente a Windows (clase ScrapingMonitorWindows, mensajes de error y rutas esperadas), lo que contradice el objetivo de Ubuntu 24.04.
+
+validate_system.py tiene código duplicado (self.validation_results asignado dos veces) y “corrige” estructuras creando carpetas aunque la nomenclatura sea incorrecta, de modo que oculta problemas reales de configuración.
+
+El README promete operación 24/7, servicios systemd, monitoreo en tiempo real y backups automáticos que aún no aparecen implementados en el código analizado.
+
+Brechas frente al objetivo
+No existe automatización de arranque (systemd), control de reinicios ni tope de uso de CPU/RAM, por lo que el requisito de “usar solo el 80 % del hardware” no se cumple en ninguna capa.
+
+No hay seguimiento de estado a nivel “Scrap del mes”, cola de pendientes o reanudación tras apagón; la base guarda tareas pero no hay lógica que retome trabajos incompletos ni reinicie por ciudad/producto.
+
+La orquestación prioritaria (Inm24 siempre activo + tres scrapers alternando) y el flujo obligatorio inm24 → inm24_det / lam → lam_det deben programarse explícitamente, porque la cadena actual nunca se dispara debido a la discordancia de claves.
+
+Recomendaciones inmediatas
+Normalizar los CSV (PaginaWeb = códigos oficiales) o mapearlos en el orquestador antes de consultar el YAML para que se activen los scrapers detalle, los límites de paginación y el árbol de carpetas correcto.
+
+Desactivar single_url_task_per_scraper y garantizar que el orquestador avance fila por fila respetando el orden, registrando en DB el índice actual para poder retomar tras una caída.
+
+Rediseñar la cola de ejecución para mantener siempre un worker dedicado a Inm24 y una rotación controlada del resto, midiendo recursos del sistema antes de lanzar nuevas instancias.
+
+Refactorizar inm24_det.py y lam_det.py para eliminar los sleep por campo, reutilizar sesiones de navegador y procesar las URLs en lotes con reintentos.
+
+Consolidar la capa de monitoreo (CLI Linux, métricas en DB) y reemplazar los placeholders del adaptador por validaciones estrictas que eviten archivos vacíos.
+
+Actualizar documentación/configuración (paths relativos, instrucciones de instalación reales) y retirar el código legacy basado en .txt si ya no aplica.
+
+Con estas correcciones podrás alinear la orquestación con el objetivo descrito, garantizar reinicios fiables y respetar el flujo completo basado en los CSV de la carpeta Urls.
