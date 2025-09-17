@@ -348,7 +348,7 @@ class LinuxScrapingOrchestrator:
                     self._clean_csv_value(row.get('ProductoPaginaWeb', '')),
                     context='ProductoPaginaWeb'
                 )
-                expected_site = self.scraper_expected_sites.get(scraper_name.lower())
+                expected_site = self.abbreviation_resolver.to_abbreviation(scraper_name, context='PaginaWeb')
                 if expected_site and website != expected_site:
                     notify_key = (scraper_name, website)
                     if notify_key not in self._website_override_notified:
