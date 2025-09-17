@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import pandas as pd
 import datetime as dt
@@ -92,7 +91,7 @@ def save(df_page):
     print(f"Datos guardados en: {fname}")
 
 def main():
-    total_urls = 200  # Aumentado a 200 páginas
+    total_urls = 100  # Número de páginas a scrapear
     for i in range(1, total_urls + 1):
         URL = f'https://casas.mitula.mx/find?page={i}&operationType=sell&geoId=mitula-MX-poblacion-0000531914&text=Zapopan%2C++%28Jalisco%29'
         print(f"Iteración {i} of {total_urls}")

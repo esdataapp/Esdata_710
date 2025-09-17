@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Module to scrape Segunda Mano DF appartments
 and stores data in local storage as CSV.
@@ -9,7 +8,7 @@ from pprint import pprint as pp
 from bs4 import BeautifulSoup
 
 # Vars
-_base_url = "https://propiedades.com/df/departamentos?pagina={}"
+_base_url = "https://casas.trovit.com.mx/index.php/cod.search_homes/type.1/what_d.Mexico/rooms_min.0/bathrooms_min.0/city.DF/order_by.relevance/resultsPerPage.25/isUserSearch.1/page.{}"
 user_agent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/67.0.3396.62 Safari/537.36"
 ddir='data/'
 
@@ -22,7 +21,7 @@ def save(depts):
             List of Departments
     """
     # Read Existant file to append
-    _fname = ddir+"{}/propiedades.csv".format(dt.date.today().isoformat())
+    _fname = ddir+"{}/trovit.csv".format(dt.date.today().isoformat())
     try:
         df = pd.read_csv(_fname, delimiter='~')
     except:
@@ -55,10 +54,10 @@ def scrape(content):
     data = []
     # Generate soup
     soup = BeautifulSoup(content, 'html.parser')
-    with open(ddir+'propiedades.html', 'w') as _F:
+    with open(ddir+'trovit.html', 'w') as _F:
         _F.write(soup.prettify())
     # Get Characteristics
-    for d in soup.find_all(class_="ad"):
+    for d in soup.find_all(class_="item mx js-item js-backToTrovit"):
         print('----')
         try:
             print(d) 

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import pandas as pd
 import datetime as dt
@@ -66,7 +65,7 @@ def scrape_property_detail(driver, html):
         print("estacionamientos:", data["estacionamientos"])
         time.sleep(0.05)
 
-    # 2. Operacion, precio y mantenimiento
+    # 2. Operación, precio y mantenimiento
     price_container = soup.find("div", class_="price-container-property")
     if price_container:
         price_value_div = price_container.find("div", class_="price-value")

@@ -14,6 +14,7 @@ import importlib.util
 import subprocess
 from datetime import datetime
 import logging
+from typing import Optional
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -21,13 +22,13 @@ logger = logging.getLogger(__name__)
 
 class SystemValidator:
     """Validador del sistema de orquestación"""
-    
-    def __init__(self, base_dir: Path = None):
+    def __init__(self, base_dir: Optional[Path] = None):
         if base_dir is None:
             base_dir = Path.cwd()  # Usar directorio actual
         
         self.base_dir = base_dir
         self.config_path = base_dir / "config" / "config.yaml"
+        self.validation_results = []
         self.validation_results = []
         
     def validate_all(self) -> bool:
@@ -348,6 +349,9 @@ class SystemValidator:
             try:
                 # Importar módulos principales
                 spec = importlib.util.spec_from_file_location("orchestrator", orchestrator_path)
+                if spec is None or spec.loader is None:
+                    print(f"   ❌ No se pudo cargar orchestrator.py")
+                    return False
                 orchestrator_module = importlib.util.module_from_spec(spec)
                 spec.loader.exec_module(orchestrator_module)
                 

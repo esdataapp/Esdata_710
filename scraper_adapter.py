@@ -31,21 +31,29 @@ class ScraperAdapter:
             logger.error(f"Scraper no encontrado: {scraper_path}")
             return False
         
+        # Obtener directorio actual antes de cambiarlo
+        original_cwd = os.getcwd()
+        
         try:
             # Cambiar al directorio de scrapers
-            original_cwd = os.getcwd()
             os.chdir(self.scrapers_dir)
             
             # Importar el módulo del scraper
             spec = importlib.util.spec_from_file_location(scraper_name, scraper_path)
+            if spec is None:
+                logger.error(f"No se pudo crear spec para el scraper: {scraper_name}")
+                return False
+            if spec.loader is None:
+                logger.error(f"El loader para el scraper {scraper_name} es None")
+                return False
             scraper_module = importlib.util.module_from_spec(spec)
-            
-            # Configurar variables del scraper
-            if hasattr(scraper_module, 'DDIR'):
-                scraper_module.DDIR = str(output_file.parent) + os.sep
             
             # Cargar el módulo
             spec.loader.exec_module(scraper_module)
+            
+            # Configurar variables del scraper
+            if hasattr(scraper_module, 'DDIR'):
+                scraper_module.DDIR = str(output_file.parent) + os.sep  # type: ignore
             
             # Determinar método de ejecución
             if scraper_name in ['cyt', 'inm24', 'lam', 'mit', 'prop', 'tro']:

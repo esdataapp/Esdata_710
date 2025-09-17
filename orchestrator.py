@@ -72,9 +72,9 @@ class ScrapingTask:
 class WindowsScrapingOrchestrator:
     """Orquestador principal para Windows"""
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: Optional[str] = None):
         if config_path is None:
-            config_path = CONFIG_PATH
+            config_path = str(CONFIG_PATH)
         
         self.config = self._load_config(config_path)
         self.base_dir = BASE_DIR
@@ -152,10 +152,17 @@ class WindowsScrapingOrchestrator:
         }
     
     def _init_database(self):
-        """Inicializa la base de datos SQLite"""
+        """Inicializa la base de datos SQLite con configuración thread-safe"""
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         
         with sqlite3.connect(self.db_path) as conn:
+            # Configurar SQLite para concurrencia
+            conn.execute("PRAGMA journal_mode = WAL")
+            conn.execute("PRAGMA synchronous = NORMAL")
+            conn.execute("PRAGMA cache_size = 1000")
+            conn.execute("PRAGMA temp_store = MEMORY")
+            conn.execute("PRAGMA busy_timeout = 30000")  # 30 segundos
+            
             conn.execute('''
                 CREATE TABLE IF NOT EXISTS scraping_tasks (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -205,9 +212,13 @@ class WindowsScrapingOrchestrator:
     
     @contextmanager
     def get_db_connection(self):
-        """Context manager para conexiones de base de datos"""
-        conn = sqlite3.connect(self.db_path)
+        """Context manager para conexiones de base de datos thread-safe"""
+        conn = sqlite3.connect(self.db_path, timeout=30.0)  # 30 segundos timeout
         conn.row_factory = sqlite3.Row
+        # Configurar para cada conexión
+        conn.execute("PRAGMA journal_mode = WAL")
+        conn.execute("PRAGMA synchronous = NORMAL")
+        conn.execute("PRAGMA busy_timeout = 30000")
         try:
             yield conn
         finally:
@@ -246,7 +257,7 @@ class WindowsScrapingOrchestrator:
                 logger.error(f"Columnas requeridas faltantes en {csv_file}")
                 return tasks
             
-            for index, row in df.iterrows():
+            for i, (_, row) in enumerate(df.iterrows()):
                 task = ScrapingTask(
                     scraper_name=scraper_name,
                     website=row['PaginaWeb'],
@@ -254,7 +265,7 @@ class WindowsScrapingOrchestrator:
                     operation=row['Operacion'],
                     product=row['ProductoPaginaWeb'],
                     url=row['URL'],
-                    order=index + 1,
+                    order=i + 1,
                     created_at=datetime.now()
                 )
                 tasks.append(task)
@@ -307,9 +318,10 @@ class WindowsScrapingOrchestrator:
         
         output_file = output_path / output_filename
         
+        # Guardar el directorio actual antes de cualquier operación
+        original_cwd = os.getcwd()
         try:
             # Cambiar al directorio de scrapers para compatibilidad
-            original_cwd = os.getcwd()
             os.chdir(self.scrapers_path)
             
             # Para scrapers existentes, crear wrapper que los ejecute
@@ -403,7 +415,7 @@ class WindowsScrapingOrchestrator:
             logger.error(f"Error en método fallback: {e}")
             return False
     
-    def update_task_status_sync(self, task: ScrapingTask, status: ScrapingStatus, error_message: str = None):
+    def update_task_status_sync(self, task: ScrapingTask, status: ScrapingStatus, error_message: Optional[str] = None):
         """Actualiza el estado de una tarea en la base de datos (versión síncrona)"""
         with self.get_db_connection() as conn:
             update_fields = ["status = ?"]
@@ -488,11 +500,11 @@ class WindowsScrapingOrchestrator:
             main_tasks = [t for t in all_tasks if not t.scraper_name.endswith('_det')]
             detail_tasks = [t for t in all_tasks if t.scraper_name.endswith('_det')]
             
-            # Fase 1: Scrapers principales
-            self.execute_tasks_sequential(main_tasks, batch_id, month_year, execution_number)
+            # Fase 1: Scrapers principales en paralelo
+            self.execute_tasks_parallel(main_tasks, batch_id, month_year, execution_number)
             
-            # Fase 2: Scrapers de detalle (dependientes)
-            self.execute_tasks_sequential(detail_tasks, batch_id, month_year, execution_number)
+            # Fase 2: Scrapers de detalle (dependientes) en paralelo
+            self.execute_tasks_parallel(detail_tasks, batch_id, month_year, execution_number)
             
             # Marcar lote como completado
             with self.get_db_connection() as conn:
@@ -516,6 +528,36 @@ class WindowsScrapingOrchestrator:
                 conn.commit()
         finally:
             self.running = False
+    
+    def execute_tasks_parallel(self, tasks: List[ScrapingTask], batch_id: str, month_year: str, execution_number: int):
+        """Ejecuta tareas en paralelo usando ThreadPoolExecutor"""
+        if not tasks:
+            return
+            
+        max_workers = min(self.max_workers, len(tasks))
+        logger.info(f"Ejecutando {len(tasks)} tareas en paralelo con {max_workers} workers")
+        
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # Enviar todas las tareas para ejecución
+            future_to_task = {
+                executor.submit(self.execute_scraper_sync, task, batch_id, month_year, execution_number): task
+                for task in tasks
+            }
+            
+            # Procesar resultados conforme se completan
+            completed = 0
+            for future in as_completed(future_to_task):
+                task = future_to_task[future]
+                completed += 1
+                
+                try:
+                    success = future.result()
+                    if success:
+                        logger.info(f"✓ [{completed}/{len(tasks)}] Tarea completada: {task.scraper_name}")
+                    else:
+                        logger.error(f"✗ [{completed}/{len(tasks)}] Tarea fallida: {task.scraper_name}")
+                except Exception as e:
+                    logger.error(f"✗ [{completed}/{len(tasks)}] Error en tarea {task.scraper_name}: {e}")
     
     def execute_tasks_sequential(self, tasks: List[ScrapingTask], batch_id: str, month_year: str, execution_number: int):
         """Ejecuta tareas secuencialmente (más estable en Windows)"""

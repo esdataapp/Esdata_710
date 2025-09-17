@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#supabase pw "8.g!fdLM5UkA-_w"
 import os
 import pandas as pd
 import datetime as dt
@@ -58,7 +58,7 @@ def save(df_page):
 
 def main():
     i = 1
-    total_urls = 200  # Aumentado a 200 páginas como solicitado
+    total_urls = 75 # 30 por página
     while i <= total_urls:   
         URL = f'https://www.inmuebles24.com/departamentos-en-venta-en-zapopan-pagina-{i}.html'
         print(f"Iteración {i} of {total_urls}")
@@ -74,8 +74,6 @@ def main():
             save(df_page)
         except Exception as e:
             print(f"Error al cargar la página: {e}")
-            # Continuar con la siguiente página en lugar de detener todo
-            continue
         finally:
             driver.quit()
 

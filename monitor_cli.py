@@ -406,9 +406,11 @@ class ScrapingMonitorWindows:
         """Ejecuta un lote de scraping inmediatamente"""
         print("🚀 Iniciando ejecución inmediata...\n")
         
+        # Obtener el directorio actual antes de cualquier cambio
+        original_cwd = os.getcwd()
+        
         try:
             # Cambiar al directorio del proyecto
-            original_cwd = os.getcwd()
             os.chdir(self.base_dir)
             
             # Ejecutar orchestrator

@@ -140,14 +140,14 @@ source venv/bin/activate
 
 # Verificar activación
 which python
-python --version
+python3 --version
 ```
 
 #### **2. Actualizar Herramientas Base**
 
 ```bash
 # Actualizar pip, setuptools, wheel
-python -m pip install --upgrade pip setuptools wheel
+python3 -m pip install --upgrade pip setuptools wheel
 
 # Verificar versiones
 pip --version
@@ -170,10 +170,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 4. Verificar instalación
-python validate_system.py
+python3 validate_system.py
 
 # 5. Ejecutar test del sistema
-python orchestrator.py test
+python3 orchestrator.py test
 ```
 
 ### 🔧 Método 2: Instalación Manual
@@ -194,13 +194,13 @@ source venv/bin/activate
 
 ```bash
 # Actualizar pip
-python -m pip install --upgrade pip
+python3 -m pip install --upgrade pip
 
 # Instalar dependencias principales
 pip install -r requirements.txt
 
 # Verificar instalación crítica
-python -c "import pandas, yaml, sqlite3, selenium; print('✅ Dependencias críticas OK')"
+python3 -c "import pandas, yaml, sqlite3, selenium; print('✅ Dependencias críticas OK')"
 ```
 
 #### **Paso 3: Configuración de Directorios**
@@ -217,7 +217,7 @@ ls -la
 
 ```bash
 # Crear archivos de configuración
-python orchestrator.py setup
+python3 orchestrator.py setup
 
 # Generar archivo de configuración base
 cp config/config.yaml config/config.yaml.backup
@@ -227,13 +227,13 @@ cp config/config.yaml config/config.yaml.backup
 
 ```bash
 # Ejecutar validación completa
-python validate_system.py
+python3 validate_system.py
 
 # Test básico del sistema
-python orchestrator.py test
+python3 orchestrator.py test
 
 # Verificar estado
-python monitor_cli.py system
+python3 monitor_cli.py system
 ```
 
 ### 📊 Método 3: Instalación para Desarrollo
@@ -254,7 +254,7 @@ export SCRAPING_DEBUG=1
 export SCRAPING_LOG_LEVEL=DEBUG
 
 # Verificar setup de desarrollo
-python -m pytest tests/ -v
+python3 -m pytest tests/ -v
 ```
 
 ## ⚙️ Configuración Post-Instalación
@@ -409,21 +409,21 @@ security:
 
 ```bash
 # Ejecutar validación completa
-python validate_system.py > validation_report.txt
+python3 validate_system.py > validation_report.txt
 
 # Verificar salida (debe ser exitosa)
 grep -E "PASS|FAIL" validation_report.txt
 
 # Test de componentes individuales
-python orchestrator.py test
-python monitor_cli.py system
+python3 orchestrator.py test
+python3 monitor_cli.py system
 ```
 
 #### **2. Validación de Conectividad**
 
 ```bash
 # Test de conectividad a sitios objetivo
-python -c "
+python3 -c "
 import requests
 sites = ['inmuebles24.com', 'casasyterrenos.com', 'lamudi.com.mx']
 for site in sites:
@@ -439,7 +439,7 @@ for site in sites:
 
 ```bash
 # Test de performance básico
-python -c "
+python3 -c "
 import time
 import psutil
 print(f'CPU: {psutil.cpu_percent()}%')
@@ -448,7 +448,7 @@ print(f'Disk: {psutil.disk_usage(\"/\").percent}%')
 "
 
 # Test de escritura de archivos
-python -c "
+python3 -c "
 import tempfile
 import time
 start = time.time()
@@ -470,7 +470,7 @@ echo PaginaWeb,Ciudad,Operacion,ProductoPaginaWeb,URL > test_urls.csv
 echo CyT,Gdl,Ven,Dep,https://httpbin.org/delay/1 >> test_urls.csv
 
 # Ejecutar test de integración
-python -c "
+python3 -c "
 from orchestrator import WindowsScrapingOrchestrator
 orch = WindowsScrapingOrchestrator()
 print('✅ Orchestrator initialized')
@@ -491,8 +491,8 @@ with orch.get_db_connection() as conn:
 
 ```batch
 # Test con URLs de prueba (sin scraping real)
-python orchestrator.py setup
-python orchestrator.py test
+python3 orchestrator.py setup
+python3 orchestrator.py test
 
 # Verificar que se crearon archivos
 dir data /s /b | findstr ".csv"
@@ -704,7 +704,7 @@ echo ===== INICIO DE OPERACIONES DIARIAS =====
 echo %date% %time%
 
 # Verificar salud del sistema
-python health_check.py
+python3 health_check.py
 if errorlevel 1 (
     echo ❌ Sistema no saludable, revisar antes de continuar
     pause
@@ -712,7 +712,7 @@ if errorlevel 1 (
 )
 
 # Verificar espacio en disco
-python -c "import shutil; free_gb = shutil.disk_usage('.').free / 1024**3; print(f'Espacio libre: {free_gb:.1f} GB'); exit(1 if free_gb < 5 else 0)"
+python3 -c "import shutil; free_gb = shutil.disk_usage('.').free / 1024**3; print(f'Espacio libre: {free_gb:.1f} GB'); exit(1 if free_gb < 5 else 0)"
 if errorlevel 1 (
     echo ⚠️  Poco espacio en disco, considerar limpieza
 )
@@ -724,7 +724,7 @@ if errorlevel 1 (
 )
 
 # Mostrar estado del sistema
-python monitor_cli.py status
+python3 monitor_cli.py status
 
 echo ✅ Sistema listo para operaciones
 ```
@@ -737,7 +737,7 @@ echo ✅ Sistema listo para operaciones
 echo ===== SHUTDOWN DEL SISTEMA =====
 
 # Verificar si hay ejecuciones activas
-python monitor_cli.py status | findstr "RUNNING"
+python3 monitor_cli.py status | findstr "RUNNING"
 if not errorlevel 1 (
     echo ⚠️  Hay tareas en ejecución, ¿continuar? (S/N)
     set /p confirm=
@@ -748,7 +748,7 @@ if not errorlevel 1 (
 )
 
 # Generar reporte final
-python monitor_cli.py stats > logs\daily_report_%date:~-4,4%%date:~-10,2%%date:~-7,2%.txt
+python3 monitor_cli.py stats > logs\daily_report_%date:~-4,4%%date:~-10,2%%date:~-7,2%.txt
 
 # Backup de emergencia
 python backup.py
@@ -814,7 +814,7 @@ choco install python -y
 refreshenv
 
 # Verificación
-python --version
+python3 --version
 ```
 
 #### **2. Error: "Dependencias faltantes"**
@@ -863,13 +863,13 @@ echo ===== DIAGNOSTICO DEL SISTEMA =====
 
 echo.
 echo === Python Environment ===
-python --version
+python3 --version
 pip --version
 where python
 
 echo.
 echo === System Resources ===
-python -c "import psutil; print(f'CPU: {psutil.cpu_percent()}%%, Memory: {psutil.virtual_memory().percent}%%, Disk: {psutil.disk_usage(\".\").percent}%%')"
+python3 -c "import psutil; print(f'CPU: {psutil.cpu_percent()}%%, Memory: {psutil.virtual_memory().percent}%%, Disk: {psutil.disk_usage(\".\").percent}%%')"
 
 echo.
 echo === File Permissions ===
@@ -882,7 +882,7 @@ ping -n 1 inmuebles24.com > nul && echo Inmuebles24: OK || echo Inmuebles24: FAI
 
 echo.
 echo === System Validation ===
-python validate_system.py
+python3 validate_system.py
 
 echo.
 echo === Recent Logs ===

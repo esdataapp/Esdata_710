@@ -17,7 +17,7 @@ data:
 # Configuración de scrapers
 scrapers:
   path: "Scrapers"  # Relativo al directorio del proyecto
-  python_executable: "/home/esdata/Documents/GitHub/Esdata_710/.venv/bin/python"  # Usar entorno virtual
+  python_executable: "/home/esdata/Documents/GitHub/Esdata_710/.venv/bin/python3"  # Usar entorno virtual con python3
   timeout_minutes: 30
   memory_limit_mb: 512
 

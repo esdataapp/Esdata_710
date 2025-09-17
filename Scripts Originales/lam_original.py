@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import os
 import pandas as pd
 import datetime as dt
@@ -77,7 +76,7 @@ def save(df_page):
 
 def main():
     i = 1
-    total_urls = 200  # Aumentado a 200 páginas
+    total_urls = 63
     while i <= total_urls:   
         URL = f'https://www.lamudi.com.mx/jalisco/zapopan/departamento/for-sale/?page={i}'
         print(f"Iteración {i} of {total_urls}")

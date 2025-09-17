@@ -250,10 +250,10 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Verificar instalación
-python validate_system.py
+python3 validate_system.py
 
 # 4. Ejecutar demostración
-python orchestrator.py test
+python3 orchestrator.py test
 ```
 
 ### 🔧 **Instalación Manual**
@@ -276,20 +276,20 @@ mkdir -p logs temp backups
 export SCRAPING_CONFIG_PATH="/home/esdata/Documents/GitHub/Esdata_710/config/config.yaml"
 
 # 6. Inicializar base de datos
-python orchestrator.py test
+python3 orchestrator.py test
 ```
 
 ### 🔍 **Verificación de Instalación**
 
 ```bash
 # Validación completa del sistema
-python validate_system.py
+python3 validate_system.py
 
 # Test básico de funcionalidad
-python orchestrator.py test
+python3 orchestrator.py test
 
 # Verificar configuración
-python monitor_cli.py system
+python3 monitor_cli.py system
 ```
 
 ## ⚙️ Configuración
@@ -375,7 +375,7 @@ export SCRAPING_RATE_LIMIT=2
 
 ```bash
 # Abrir menú principal
-python monitor_cli.py status --detailed
+python3 monitor_cli.py status --detailed
 ```
 
 **Opciones disponibles:**
@@ -393,52 +393,52 @@ python monitor_cli.py status --detailed
 #### **Orquestador Principal**
 ```bash
 # Ejecutar lote completo de scraping
-python orchestrator.py run
+python3 orchestrator.py run
 
 # Ver estado actual (formato JSON)
-python orchestrator.py status
+python3 orchestrator.py status
 
 # Crear archivos de ejemplo
-python orchestrator.py setup
+python3 orchestrator.py setup
 
 # Test básico del sistema
-python orchestrator.py test
+python3 orchestrator.py test
 ```
 
 #### **Monitor CLI**
 ```bash
 # Estado actual del sistema
-python monitor_cli.py status
-python monitor_cli.py status --detailed
+python3 monitor_cli.py status
+python3 monitor_cli.py status --detailed
 
 # Historial de ejecuciones
-python monitor_cli.py history
-python monitor_cli.py history --limit 20
+python3 monitor_cli.py history
+python3 monitor_cli.py history --limit 20
 
 # Tareas del último lote
-python monitor_cli.py tasks
-python monitor_cli.py tasks --batch-id Sep25_01
+python3 monitor_cli.py tasks
+python3 monitor_cli.py tasks --batch-id Sep25_01
 
 # Información del sistema
-python monitor_cli.py system
+python3 monitor_cli.py system
 
 # Estadísticas de rendimiento
-python monitor_cli.py stats
-python monitor_cli.py stats --days 60
+python3 monitor_cli.py stats
+python3 monitor_cli.py stats --days 60
 
 # Ejecutar scraping inmediatamente
-python monitor_cli.py run
+python3 monitor_cli.py run
 ```
 
 #### **Validación del Sistema**
 ```bash
 # Validación completa
-python validate_system.py
+python3 validate_system.py
 
 # Validación específica
-python validate_system.py --check dependencies
-python validate_system.py --check configuration
-python validate_system.py --check scrapers
+python3 validate_system.py --check dependencies
+python3 validate_system.py --check configuration
+python3 validate_system.py --check scrapers
 ```
 
 ### 🔄 **Flujo de Trabajo Típico**
@@ -462,22 +462,22 @@ nano config/config.yaml
 #### **2. Ejecución Regular**
 ```bash
 # Opción A: Menu interactivo
-python monitor_cli.py status --detailed
+python3 monitor_cli.py status --detailed
 
 # Opción B: Comando directo
-python orchestrator.py run
+python3 orchestrator.py run
 
 # Opción C: Monitoreo continuo
-python monitor_cli.py status --detailed
+python3 monitor_cli.py status --detailed
 ```
 
 #### **3. Análisis de Resultados**
 ```bash
 # Ver resultados
-python monitor_cli.py history
+python3 monitor_cli.py history
 
 # Estadísticas
-python monitor_cli.py stats
+python3 monitor_cli.py stats
 
 # Abrir datos
 xdg-open data
@@ -489,7 +489,7 @@ xdg-open data
 
 ```bash
 # Dashboard interactivo
-python monitor_cli.py status --detailed
+python3 monitor_cli.py status --detailed
 ```
 
 **Información mostrada:**
@@ -551,19 +551,19 @@ monitoring:
 #### **Reporte Diario**
 ```bash
 # Generar reporte del día
-python monitor_cli.py stats --days 1 > reports/daily_$(date +%Y%m%d).txt
+python3 monitor_cli.py stats --days 1 > reports/daily_$(date +%Y%m%d).txt
 ```
 
 #### **Reporte Semanal**
 ```bash
 # Generar reporte semanal
-python monitor_cli.py stats --days 7 > reports/weekly_$(date +%Y%m%d).txt
+python3 monitor_cli.py stats --days 7 > reports/weekly_$(date +%Y%m%d).txt
 ```
 
 #### **Reporte de Salud del Sistema**
 ```bash
 # Generar reporte completo
-python validate_system.py > reports/health_$(date +%Y%m%d).txt
+python3 validate_system.py > reports/health_$(date +%Y%m%d).txt
 ```
 
 ## 🔌 API y CLI
@@ -573,7 +573,7 @@ python validate_system.py > reports/health_$(date +%Y%m%d).txt
 #### **Orchestrator CLI**
 ```bash
 # Sintaxis general
-python orchestrator.py <comando> [opciones]
+python3 orchestrator.py <comando> [opciones]
 
 # Comandos disponibles
 Commands:
@@ -583,15 +583,15 @@ Commands:
   test     Ejecutar test básico del sistema
 
 # Ejemplos
-python orchestrator.py run
-python orchestrator.py status | jq '.last_batch'
-python orchestrator.py test --verbose
+python3 orchestrator.py run
+python3 orchestrator.py status | jq '.last_batch'
+python3 orchestrator.py test --verbose
 ```
 
 #### **Monitor CLI**
 ```bash
 # Sintaxis general
-python monitor_cli.py <comando> [opciones]
+python3 monitor_cli.py <comando> [opciones]
 
 # Comandos de estado
 monitor_cli.py status [--detailed]
@@ -902,7 +902,7 @@ class CustomMetricsCollector:
 2. **Crear rama** para la funcionalidad: `git checkout -b feature/nueva-funcionalidad`
 3. **Desarrollar** con tests incluidos
 4. **Ejecutar tests**: `python -m pytest`
-5. **Validar código**: `python validate_system.py`
+5. **Validar código**: `python3 validate_system.py`
 6. **Commit** con mensaje descriptivo
 7. **Push** y crear **Pull Request**
 
@@ -915,7 +915,7 @@ class CustomMetricsCollector:
 Síntoma: SQLite database not found
 Causa: Primera ejecución o base de datos corrupta
 Solución:
-1. python orchestrator.py run    # Crea DB automáticamente
+1. python3 orchestrator.py run    # Crea DB automáticamente
 2. Verificar permisos de escritura en directorio
 3. Si persiste: eliminar orchestrator.db y re-ejecutar
 ```
@@ -925,7 +925,7 @@ Solución:
 Síntoma: FileNotFoundError: Scraper not found
 Causa: Archivo .py faltante o ruta incorrecta
 Solución:
-1. Verificar existencia: python monitor_cli.py system
+1. Verificar existencia: python3 monitor_cli.py system
 2. Validar estructura: dir Scrapers\
 3. Re-descargar scrapers faltantes
 ```
@@ -948,7 +948,7 @@ Solución:
 1. Verificar formato: usar Excel o editor de texto
 2. Validar columnas requeridas:
    - PaginaWeb, Ciudad, Operacion, ProductoPaginaWeb, URL
-3. Recrear archivos: python orchestrator.py setup
+3. Recrear archivos: python3 orchestrator.py setup
 ```
 
 #### **Error: "Chrome driver not found"**
@@ -997,10 +997,10 @@ Solución:
 #### **Diagnóstico Completo del Sistema**
 ```bash
 # Ejecutar diagnóstico completo
-python validate_system.py > diagnostico.txt 2>&1
+python3 validate_system.py > diagnostico.txt 2>&1
 
 # Verificar logs detallados
-python monitor_cli.py system
+python3 monitor_cli.py system
 
 # Test de conectividad
 ping www.inmuebles24.com
@@ -1066,7 +1066,7 @@ tar -xzf scraping_backup_YYYYMMDD_HHMMSS.tar.gz
 cp scraping_backup_YYYYMMDD_HHMMSS/orchestrator.db .
 
 # Verificar restauración
-python monitor_cli.py status
+python3 monitor_cli.py status
 ```
 
 #### **Reset Completo del Sistema**
@@ -1087,9 +1087,9 @@ fi
 #### **Modo de Emergencia (Solo Monitoreo)**
 ```bash
 # Ejecutar solo monitoreo sin scraping
-python monitor_cli.py status
-python monitor_cli.py system
-python monitor_cli.py history --limit 10
+python3 monitor_cli.py status
+python3 monitor_cli.py system
+python3 monitor_cli.py history --limit 10
 
 # Verificar integridad de datos
 python -c "
@@ -1115,7 +1115,7 @@ python3 --version >> soporte.txt
 echo "" >> soporte.txt
 
 echo "=== VALIDACIÓN DEL SISTEMA ===" >> soporte.txt
-python validate_system.py >> soporte.txt 2>&1
+python3 validate_system.py >> soporte.txt 2>&1
 echo "" >> soporte.txt
 
 echo "=== ÚLTIMOS LOGS ===" >> soporte.txt
@@ -1123,7 +1123,7 @@ grep -E "ERROR|CRITICAL" logs/orchestrator.log | tail -20 >> soporte.txt
 echo "" >> soporte.txt
 
 echo "=== ESTADO ACTUAL ===" >> soporte.txt
-python monitor_cli.py status >> soporte.txt 2>&1
+python3 monitor_cli.py status >> soporte.txt 2>&1
 
 echo "Reporte generado en soporte.txt"
 ```

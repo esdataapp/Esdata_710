@@ -15,6 +15,7 @@ import logging
 import shutil
 import re
 import time
+from typing import Optional
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -98,6 +99,8 @@ class ImprovedScraperAdapter:
     
     def _execute_main_scraper(self, scraper_name: str, task_info: dict, config: dict) -> bool:
         """Ejecuta scrapers que ya tienen función main()"""
+        # Inicializar original_cwd fuera del bloque try
+        original_cwd = os.getcwd()
         try:
             # Crear una copia modificada del scraper
             modified_scraper = self._create_modified_scraper(scraper_name, task_info, config)
@@ -106,7 +109,6 @@ class ImprovedScraperAdapter:
                 return self._create_placeholder_execution(scraper_name, task_info)
             
             # Ejecutar el scraper modificado
-            original_cwd = os.getcwd()
             os.chdir(self.scrapers_dir)
             
             # Importar y ejecutar
@@ -114,6 +116,10 @@ class ImprovedScraperAdapter:
                 f"{scraper_name}_modified", 
                 modified_scraper
             )
+            if spec is None or spec.loader is None:
+                logger.error(f"No se pudo cargar el módulo o su loader: {scraper_name}_modified")
+                os.chdir(original_cwd)
+                return False
             scraper_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(scraper_module)
             
@@ -134,8 +140,8 @@ class ImprovedScraperAdapter:
             logger.error(f"Error ejecutando scraper {scraper_name}: {e}")
             os.chdir(original_cwd)
             return False
-    
-    def _create_modified_scraper(self, scraper_name: str, task_info: dict, config: dict) -> Path:
+    def _create_modified_scraper(self, scraper_name: str, task_info: dict, config: dict) -> Optional[Path]:
+        """Crea una versión modificada del scraper con la configuración correcta"""
         """Crea una versión modificada del scraper con la configuración correcta"""
         original_file = self.scrapers_dir / f"{scraper_name}.py"
         modified_file = self.temp_dir / f"{scraper_name}_modified.py"
@@ -388,7 +394,7 @@ class ImprovedScraperAdapter:
         except Exception as e:
             logger.warning(f"Error limpiando archivos temporales: {e}")
     
-    def _create_placeholder_execution(self, scraper_name: str, task_info: dict, note: str = None) -> bool:
+    def _create_placeholder_execution(self, scraper_name: str, task_info: dict, note: Optional[str] = None) -> bool:
         """Crea un archivo placeholder cuando no se puede ejecutar completamente"""
         try:
             output_file = Path(task_info['output_file'])

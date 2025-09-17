@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Module to scrape Segunda Mano DF appartments
 and stores data in local storage as CSV.
