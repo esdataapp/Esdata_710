@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project>
+  <Your_Goal>
+    Consolidar una plataforma empresarial de orquestación de scraping que pueda
+    ejecutarse en Ubuntu 24.04 LTS. El repositorio debe entregar un flujo
+    funcional extremo a extremo incluso en entornos sin acceso a internet,
+    utilizando scrapers sintéticos que respeten la estructura real de datos y
+    permitan sustituirlos fácilmente por scrapers productivos.
+  </Your_Goal>
+
+  <Project_Goal>
+    Ejecutar múltiples scrapers en paralelo, con seguimiento persistente en
+    SQLite, monitoreo por CLI y capacidad de reanudación automática. La solución
+    debe operar diariamente con lotes quincenales y mantener el uso de recursos
+    bajo control (objetivo 80 % del hardware disponible).
+  </Project_Goal>
+
+  <Architecture>
+    <Database>SQLite con tablas `execution_batches` y `scraping_tasks`.</Database>
+    <Orchestrator>CLI asíncrono (`orchestrator.py`) basado en asyncio y colas con prioridades.</Orchestrator>
+    <Scrapers>Scripts sintéticos en `Scrapers/` que generan datos deterministas usando `esdata.scrapers.common`.</Scrapers>
+    <Monitoring>CLI `monitor_cli.py` con comandos overview/batches/tasks.</Monitoring>
+    <Validation>Herramienta `validate_system.py` para confirmar estructura y dependencias.</Validation>
+    <Configuration>Archivo YAML centralizado (`config/config.yaml`) y lista de abreviaturas.</Configuration>
+  </Architecture>
+
+  <Variables>
+    La jerarquía sigue definida por los CSV en `urls/`:
+    <Column1 name="PaginaWeb">Códigos abreviados (Inm24, CyT, Lam, Mit, Prop, Tro)</Column1>
+    <Column2 name="Ciudad">Ciudades abreviadas (Gdl, Zap, Tlaj, Tlaq, Ton, Salt, IMem, Jnctl)</Column2>
+    <Column3 name="Operacion">Operaciones (Ven, Ren, Ven-d, Ven-r)</Column3>
+    <Column4 name="ProductoPaginaWeb">Productos (Dep, Cas, Ofc, Com, etc.)</Column4>
+    <Column5 name="URL">URL base de extracción (orden preservado)</Column5>
+    El orquestador normaliza estos valores usando `Lista de Variables/Lista de Variables Orquestacion.csv`.
+  </Variables>
+
+  <Execution_Flow>
+    <Phase1_Main_Scrapers>
+      Los scrapers principales leen su CSV, generan archivos `*URL_...csv` con
+      URLs sintéticas y actualizan la base de datos. Inm24 tiene prioridad
+      absoluta, mientras que el resto rota respetando el número máximo de
+      procesos configurado.
+    </Phase1_Main_Scrapers>
+    <Phase2_Detail_Scrapers>
+      Los scrapers de detalle (`inm24_det.py`, `lam_det.py`) se habilitan
+      automáticamente cuando el scraper principal asociado finaliza y se les
+      inyecta la ruta del archivo puente mediante `SCRAPER_URL_LIST_FILE`.
+    </Phase2_Detail_Scrapers>
+    <Error_Recovery>
+      Reintentos automáticos, control de intentos por tarea, marcación de
+      fallos y reanudación del lote con `orchestrator.py resume`.
+    </Error_Recovery>
+  </Execution_Flow>
+
+  <Folder_System_Enhanced>
+    <System_Directories>
+      <Code>/opt/scraping/ (sugerido) o ruta del repositorio clonado.</Code>
+      <Data>data/ — salida jerárquica.</Data>
+      <Urls>urls/ — CSV de orquestación.</Urls>
+      <Logs>logs/ — registros del orquestador.</Logs>
+      <DB>orchestrator.db — base de datos SQLite.</DB>
+    </System_Directories>
+    <Data_Structure>
+      `Base_de_Datos/<PaginaWeb>/<Ciudad>/<Operacion>/<Producto>/<MesAño>/<Ejecucion>/`
+      con archivos `PaginaWebURL_...csv` (fase principal) y `PaginaWeb_...csv`
+      (fase de detalle).
+    </Data_Structure>
+  </Folder_System_Enhanced>
+
+  <Database_Schema>
+    <Table_scraping_tasks>
+      id, batch_id, scraper_name, website, city, operation, product, url,
+      order_num, status, attempts, max_attempts, timestamps, error_message,
+      output_path, is_detail, depends_on, dependency_path, task_key.
+    </Table_scraping_tasks>
+    <Table_execution_batches>
+      id, batch_id, month_year, execution_number, started_at, completed_at,
+      total_tasks, completed_tasks, failed_tasks, status.
+    </Table_execution_batches>
+  </Database_Schema>
+
+  <Configuration_System>
+    Secciones principales de `config/config.yaml`:
+    <Core_Config>database, data, scrapers, execution.</Core_Config>
+    <Websites>Prioridades, scraper de detalle y límites de paginación.</Websites>
+    <Aliases>Normalización de PaginaWeb/Ciudad/Operacion/Producto.</Aliases>
+  </Configuration_System>
+
+  <Monitoring_System>
+    <CLI_Commands>
+      `python monitor_cli.py overview`, `python monitor_cli.py batches --limit 5`,
+      `python monitor_cli.py tasks --status pending running`.
+    </CLI_Commands>
+    <Metrics_Tracking>
+      Tareas por estado, intentos realizados y rutas de salida almacenadas en la base de datos.
+    </Metrics_Tracking>
+  </Monitoring_System>
+
+  <Future_Work>
+    - Reemplazar la generación sintética por scraping real manteniendo el contrato de `common.py`.
+    - Integrar servicios `systemd` para ejecución como daemon.
+    - Añadir alarmas externas (email/Slack) usando la información de `orchestrator.db`.
+    - Incorporar rutinas de backup automático para los CSV y la base de datos.
+  </Future_Work>
+</Project>
