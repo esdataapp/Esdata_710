@@ -1,8 +1,4 @@
-"""Ejecución yfrom .configuration import ConfigManager
-from .database import TaskRepository
-from ..models.main import ExecutionBatch, ScrapingTask, TaskStatus
-from .resource_monitor import ResourceLimiter
-from .scraper_adapter import ScraperAdapterdinación de tareas de scraping."""
+"""Ejecución y coordinación de tareas de scraping."""
 from __future__ import annotations
 
 import asyncio
@@ -18,9 +14,9 @@ from typing import Deque, Dict, List, Optional
 
 from .configuration import ConfigManager
 from .database import TaskRepository
-from ..models.main import ExecutionBatch, ScrapingTask, TaskStatus
+from .models import ExecutionBatch, ScrapingTask, TaskStatus
 from .resource_monitor import ResourceLimiter
-from .scraper_adapter import ScraperAdapter # Corregido
+from core.scraper_adapter import ScraperAdapter # Corregido
 
 logger = logging.getLogger(__name__)
 
@@ -203,25 +199,26 @@ class OrchestratorRunner:
         running[task.task_key()] = future
 
     async def _execute_task(self, task: ScrapingTask, batch: ExecutionBatch) -> TaskExecutionResult:
+        output_dir = self._build_output_dir(task, batch)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        output_filename = task.expected_filename(batch.month_year, batch.execution_number)
+        output_file = output_dir / output_filename
+        
+        dependency_path = self.repository.get_dependency_path(task.depends_on) if task.depends_on else None
+
         try:
             loop = asyncio.get_running_loop()
             # Ejecutar el adapter en un executor para no bloquear el loop de asyncio
-            success, message = await loop.run_in_executor(
+            final_path = await loop.run_in_executor(
                 None,
                 self.adapter.run,
                 task,
+                output_file,
+                dependency_path,
                 batch,
             )
-            
-            # El path de salida se obtiene del contexto que el adapter construye
-            context = self.adapter.get_last_context()
-            output_path = context.output_path if context else None
-
-            if success:
-                return TaskExecutionResult(task=task, success=True, output_path=output_path)
-            else:
-                return TaskExecutionResult(task=task, success=False, output_path=None, error=message)
-
+            return TaskExecutionResult(task=task, success=True, output_path=final_path)
         except Exception as exc:
             logger.exception("Excepción no controlada durante la ejecución de la tarea %s.", task.task_key())
             return TaskExecutionResult(task=task, success=False, output_path=None, error=str(exc))

@@ -28,27 +28,37 @@ class TaskStatus(str, Enum):
 class ScrapingTask:
     """Representa un trabajo individual de scraping, mapeado a la tabla de la BD."""
 
-    # --- Campos Requeridos (sin valor por defecto) ---
+    # Campos principales que definen la tarea
     scraper_name: str
     url: str
     order: int
+    
+    # Códigos normalizados para la nomenclatura de carpetas y archivos
     website_code: str
     city_code: str
     operation_code: str
     product_code: str
-    created_at: datetime
 
-    # --- Campos Opcionales (con valor por defecto) ---
+    # Estado y seguimiento
     status: TaskStatus = TaskStatus.PENDING
     attempts: int = 0
     max_attempts: int = 3
+    
+    # Relaciones y dependencias
     batch_id: Optional[str] = None
     is_detail: bool = False
-    depends_on: Optional[str] = None
+    depends_on: Optional[str] = None # Clave de la tarea principal de la que depende
+
+    # Timestamps
+    created_at: datetime
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
+    
+    # Información de resultados
     error_message: Optional[str] = None
-    output_path: Optional[str] = None
+    output_path: Optional[str] = None # Se guarda como string en la BD
+
+    # ID de la base de datos
     id: Optional[int] = None
 
     def task_key(self) -> str:
