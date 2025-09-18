@@ -3,34 +3,67 @@
 
 # Modo de prueba para aislar la ejecución de scrapers
 test_mode:
-  enabled: false
-  scraper_to_test: "Inm24" # Scraper a probar (ej. "Inm24", "CyT")
+  enabled: true
+  scraper_to_test: "inm24" # Scraper a probar (ej. "inm24", "cyt")
 
 # Mapeo de nombres de CSV a códigos internos
 website_mapping:
-  "Inmuebles24": "Inm24"
-  "casasyterrenos": "CyT"
-  "Lamudi": "Lam"
-  "MetrosCubicos": "Mit"
-  "Propiedades": "Prop"
-  "Trovit": "Tro"
+  "inmuebles24": "inm24"
+  "casasyterrenos": "cyt"
+  "lamudi": "lam"
+  "metroscubicos": "mit"
+  "propiedades": "prop"
+  "trovit": "tro"
+
+# Configuraciones específicas por scraper
+scraper_settings:
+  inm24:
+    # Inmuebles24 es sensible y a menudo presenta captchas de Cloudflare.
+    # Requiere una GUI (real o virtual como xvfb) para que seleniumbase
+    # pueda intentar resolver el captcha haciendo clic en él.
+    requires_gui: true
+  inm24_det:
+    requires_gui: true
+  
+  # Por defecto, los demás scrapers pueden funcionar en modo headless.
+  lam:
+    requires_gui: false
+  lam_det:
+    requires_gui: false
+  cyt:
+    requires_gui: false
+  mit:
+    requires_gui: false
+  prop:
+    requires_gui: false
+  tro:
+    requires_gui: false
+
+# Configuración de directorios. Las rutas son relativas a la raíz del proyecto.
+data:
+  urls_path: "urls"
+  logs_path: "logs"
+  temp_path: "temp"
 
 # Configuración de base de datos
 database:
-  path: "orchestrator.db"
-  backup_path: "../backups" # Subir un nivel desde esdata_run
+  path: "esdata_run/orchestrator.db" # Ruta desde la raíz del proyecto
+  backup_path: "backups"
   backup_retention_days: 30
-
-# Configuración de directorios  
-data:
-  base_path: "../data" # Subir un nivel desde esdata_run
-  urls_path: "urls"
-  logs_path: "../logs" # Subir un nivel desde esdata_run
-  temp_path: "../temp" # Subir un nivel desde esdata_run
 
 # Configuración de scrapers
 scrapers:
-  path: "Scrapers"
+  base_path: "esdata_run/scrapers"
+  # Mapeo de nombres de scraper a archivos de script
+  scripts:
+    inm24: "inm24.py"
+    inm24_det: "inm24_det.py"
+    cyt: "cyt.py"
+    lam: "lam.py"
+    lam_det: "lam_det.py"
+    mit: "mit.py"
+    prop: "prop.py"
+    tro: "tro.py"
   python_executable: "python3"
   timeout_minutes: 60 # Aumentado para robustez
   memory_limit_mb: 1024
@@ -53,7 +86,7 @@ monitoring:
 
 # Configuración de sitios web
 websites:
-  Inm24:
+  inm24:
     priority: 1
     has_detail_scraper: true
     detail_scraper_name: "inm24_det"
@@ -62,7 +95,7 @@ websites:
     user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 20 # Reducido para evitar bloqueos
     
-  CyT:
+  cyt:
     priority: 2
     has_detail_scraper: false
     base_url: "https://casasyterrenos.com"
@@ -70,7 +103,7 @@ websites:
     user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 30
     
-  Lam:
+  lam:
     priority: 3
     has_detail_scraper: true
     detail_scraper_name: "lam_det"
@@ -79,7 +112,7 @@ websites:
     user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 25
     
-  Mit:
+  mit:
     priority: 4
     has_detail_scraper: false
     base_url: "https://mitula.com.mx"
@@ -87,7 +120,7 @@ websites:
     user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 40
     
-  Prop:
+  prop:
     priority: 5
     has_detail_scraper: false
     base_url: "https://propiedades.com"
@@ -95,7 +128,7 @@ websites:
     user_agent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     max_pages_per_session: 30
     
-  Tro:
+  tro:
     priority: 6
     has_detail_scraper: false
     base_url: "https://trovit.com.mx"
