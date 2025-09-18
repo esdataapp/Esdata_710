@@ -65,53 +65,7 @@ class ConfigManager:
     def get_website_code(self, raw_website_name: str) -> Optional[str]:
         """
         Traduce un nombre de sitio web del CSV (ej. 'Inmuebles24')
-        a su código interno (ej. 'Inm24') usando el mapeo (case-insensitive).
+        a su código interno (ej. 'Inm24') usando el mapeo.
         """
         mapping = self.get('website_mapping', {})
-        # Búsqueda case-insensitive
-        for key, value in mapping.items():
-            if key.lower() == raw_website_name.lower():
-                return value
-        return None
-
-    def get_scraper_config(self, scraper_name: str) -> Optional[dict[str, Any]]:
-        """Obtiene la configuración para un scraper específico, case-insensitive."""
-        scraper_name_lower = scraper_name.lower()
-        websites_config = self.get('websites', {})
-        for key, config_value in websites_config.items():
-            if key.lower() == scraper_name_lower:
-                return config_value
-        return None
-
-    def get_scraper_script_path(self, scraper_name: str) -> Optional[Path]:
-        """
-        Construye la ruta completa al script de un scraper (case-insensitive).
-        """
-        scraper_name_lower = scraper_name.lower()
-        scrapers_config = self.get('scrapers', {})
-        scripts_mapping = scrapers_config.get('scripts', {})
-        
-        # Búsqueda case-insensitive en el mapeo de scripts
-        script_filename = None
-        for key, value in scripts_mapping.items():
-            if key.lower() == scraper_name_lower:
-                script_filename = value
-                break
-
-        if not script_filename:
-            logger.error("No se encontró el nombre del script para el scraper '%s' en la configuración.", scraper_name)
-            return None
-
-        # La ruta base de los scrapers se define en el config, relativa a la raíz del proyecto.
-        # La base_dir de ConfigManager es 'esdata_run', así que subimos un nivel.
-        project_root = self.base_dir.parent
-        scrapers_base_path_str = scrapers_config.get('base_path', 'esdata_run/scrapers')
-        scrapers_base_path = project_root / scrapers_base_path_str
-        
-        script_path = scrapers_base_path / script_filename
-        
-        if not script_path.exists():
-            logger.error("El archivo de script para '%s' no se encontró en la ruta: %s", scraper_name, script_path)
-            return None
-            
-        return script_path
+        return mapping.get(raw_website_name)

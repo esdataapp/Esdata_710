@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Iterator, List, Optional, Sequence
 
-from ..models.main import ExecutionBatch, ScrapingTask, TaskStatus
+from .models import ExecutionBatch, ScrapingTask, TaskStatus
 
 logger = logging.getLogger(__name__)
 
